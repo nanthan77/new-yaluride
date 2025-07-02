@@ -26,9 +26,9 @@ import {
 
 import { ConfigService } from '@nestjs/config';
 import { RideService } from './ride.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
+import { User } from '@yaluride/database';
 import {
   CreateRideRequestDto,
   UpdateRideStatusDto,

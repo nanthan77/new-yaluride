@@ -10,8 +10,8 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import { RideStatus, VehicleType } from '../../../../libs/common/src/enums/ride.enums';
-import { Ride } from '../entities/ride.entity';
+import { RideStatus, VehicleType } from '@yaluride/common';
+import { Ride } from '@yaluride/database';
 import { Expose, Type } from 'class-transformer';
 
 // --- DTO for creating a ride request ---
