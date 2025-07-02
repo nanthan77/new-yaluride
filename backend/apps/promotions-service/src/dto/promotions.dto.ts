@@ -78,6 +78,20 @@ export class VoucherDto {
 
   @ApiProperty({ example: true, description: 'Is voucher active' })
   isActive: boolean;
+
+  constructor(voucher: any) {
+    this.id = voucher.id;
+    this.code = voucher.code;
+    this.description = voucher.description;
+    this.discountType = voucher.discountType;
+    this.discountValue = voucher.discountValue;
+    this.maxDiscountAmount = voucher.maxDiscountAmount;
+    this.minOrderAmount = voucher.minRideAmount;
+    this.expiryDate = voucher.expiresAt || voucher.validUntil;
+    this.usageLimit = voucher.totalUsageLimit;
+    this.usageCount = voucher.usageCount || 0;
+    this.isActive = voucher.isActive;
+  }
 }
 
 export class ApplyVoucherDto {
@@ -128,6 +142,39 @@ export class ApplyVoucherResponseDto {
 
   @ApiProperty({ description: 'Voucher details', type: VoucherDto, required: false })
   voucher?: VoucherDto;
+}
+
+export class UserVoucherDto {
+  @ApiProperty({ example: 'uuid', description: 'User voucher ID' })
+  id: string;
+
+  @ApiProperty({ example: 'uuid', description: 'User ID' })
+  userId: string;
+
+  @ApiProperty({ example: 'uuid', description: 'Voucher ID' })
+  voucherId: string;
+
+  @ApiProperty({ example: 'ACTIVE', enum: UserVoucherStatus, description: 'Voucher status' })
+  status: UserVoucherStatus;
+
+  @ApiProperty({ description: 'Voucher details', type: VoucherDto })
+  voucher: VoucherDto;
+
+  @ApiProperty({ example: '2024-01-15T10:30:00Z', description: 'Date voucher was assigned' })
+  assignedAt: Date;
+
+  @ApiProperty({ example: '2024-01-20T14:45:00Z', description: 'Date voucher was used', required: false })
+  usedAt?: Date;
+
+  constructor(userVoucher: any) {
+    this.id = userVoucher.id;
+    this.userId = userVoucher.userId;
+    this.voucherId = userVoucher.voucherId;
+    this.status = userVoucher.status;
+    this.voucher = userVoucher.voucher;
+    this.assignedAt = userVoucher.assignedAt;
+    this.usedAt = userVoucher.usedAt;
+  }
 }
 
 export class VoucherValidationResponse {

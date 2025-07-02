@@ -28,6 +28,7 @@ import {
     ApplyVoucherDto,
     VoucherDto,
     ApplyVoucherResponseDto,
+    UserVoucherDto,
 } from './dto/promotions.dto';
 
 @ApiTags('Promotions & Vouchers')
@@ -51,7 +52,7 @@ export class PromotionsController {
     async createVoucher(@Body() createVoucherDto: CreateVoucherDto): Promise<VoucherDto> {
         this.logger.log(`Admin creating new voucher with code: ${createVoucherDto.code}`);
         const voucher = await this.promotionsService.createVoucher(createVoucherDto);
-        return voucher;
+        return new VoucherDto(voucher);
     }
 
     // --- Authenticated User Endpoints ---
@@ -98,7 +99,7 @@ export class PromotionsController {
             discountAmount: result.discountAmount,
             finalAmount: applyVoucherDto.orderAmount - result.discountAmount,
             message: 'Voucher applied successfully',
-            voucher: result.voucher,
+            voucher: new VoucherDto(result.voucher),
         };
     };
 

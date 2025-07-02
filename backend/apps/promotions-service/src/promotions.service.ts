@@ -47,13 +47,13 @@ export class PromotionsService {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new NotFoundException('User not found');
 
-    const existingCode = await this.referralCodeRepository.findOneBy({ user_id: userId });
+    const existingCode = await this.referralCodeRepository.findOneBy({ userId: userId });
     if (existingCode) return existingCode;
 
     let code: string;
     let isUnique = false;
     do {
-      code = this._generateReferralCode(user.display_name);
+      code = this._generateReferralCode(user.fullName || user.email || 'User');
       const codeExists = await this.referralCodeRepository.findOneBy({ code });
       if (!codeExists) {
         isUnique = true;
@@ -61,7 +61,7 @@ export class PromotionsService {
     } while (!isUnique);
 
     const newReferralCode = this.referralCodeRepository.create({
-      user_id: userId,
+      userId: userId,
       code,
     });
 
@@ -99,13 +99,13 @@ export class PromotionsService {
       // Award voucher to the referrer
       if (referrerVoucher) {
         const newReferrerVoucher = this.userVoucherRepository.create({
-          user_id: referrerCode.user_id,
-          voucher_id: referrerVoucher.id,
+          userId: referrerCode.userId,
+          voucherId: referrerVoucher.id,
           status: UserVoucherStatus.ACTIVE,
         });
         await queryRunner.manager.save(newReferrerVoucher);
         this.eventsClient.emit('promotion.voucher.awarded', {
-          userId: referrerCode.user_id,
+          userId: referrerCode.userId,
           voucherCode: referrerVoucher.code,
           reason: 'Successful Referral',
         });
@@ -114,8 +114,8 @@ export class PromotionsService {
       // Award voucher to the new user
       if (newUserVoucher) {
         const newSignedUpUserVoucher = this.userVoucherRepository.create({
-          user_id: newUserId,
-          voucher_id: newUserVoucher.id,
+          userId: newUserId,
+          voucherId: newUserVoucher.id,
           status: UserVoucherStatus.ACTIVE,
         });
         await queryRunner.manager.save(newSignedUpUserVoucher);
@@ -127,7 +127,7 @@ export class PromotionsService {
       }
 
       await queryRunner.commitTransaction();
-      this.logger.log(`Successfully processed referral for new user ${newUserId} by referrer ${referrerCode.user_id}`);
+      this.logger.log(`Successfully processed referral for new user ${newUserId} by referrer ${referrerCode.userId}`);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error(`Failed to process referral for code ${referralCode}`, error.stack);
@@ -159,14 +159,14 @@ export class PromotionsService {
     // and return all vouchers with status 'ACTIVE' and not expired.
     const userVouchers = await this.userVoucherRepository.find({
         where: {
-            user_id: userId,
+            userId: userId,
             status: UserVoucherStatus.ACTIVE,
         },
         relations: ['voucher'],
     });
 
     // Filter out any expired vouchers that might not have been updated by a cron job
-    return userVouchers.filter(uv => uv.voucher && new Date(uv.voucher.expires_at) > new Date());
+    return userVouchers.filter(uv => uv.voucher && new Date(uv.voucher.expiresAt) > new Date());
   }
 
   /**
@@ -177,19 +177,19 @@ export class PromotionsService {
 
     // Validation checks
     if (!voucher) throw new NotFoundException('Voucher code not found.');
-    if (!voucher.is_active) throw new BadRequestException('This voucher is not currently active.');
-    if (new Date(voucher.expires_at) < new Date()) throw new BadRequestException('This voucher has expired.');
-    if (rideAmount < voucher.min_ride_amount) {
-      throw new BadRequestException(`This voucher requires a minimum ride amount of LKR ${voucher.min_ride_amount}.`);
+    if (!voucher.isActive) throw new BadRequestException('This voucher is not currently active.');
+    if (new Date(voucher.expiresAt) < new Date()) throw new BadRequestException('This voucher has expired.');
+    if (rideAmount < voucher.minRideAmount) {
+      throw new BadRequestException(`This voucher requires a minimum ride amount of LKR ${voucher.minRideAmount}.`);
     }
 
     // Check usage limits
-    const totalUses = await this.userVoucherRepository.countBy({ voucher_id: voucher.id });
-    if (voucher.total_usage_limit && totalUses >= voucher.total_usage_limit) {
+    const totalUses = await this.userVoucherRepository.countBy({ voucherId: voucher.id });
+    if (voucher.totalUsageLimit && totalUses >= voucher.totalUsageLimit) {
       throw new BadRequestException('This voucher has reached its maximum usage limit.');
     }
-    const userUses = await this.userVoucherRepository.countBy({ user_id: userId, voucher_id: voucher.id });
-    if (userUses >= voucher.usage_limit_per_user) {
+    const userUses = await this.userVoucherRepository.countBy({ userId: userId, voucherId: voucher.id });
+    if (userUses >= voucher.usageLimitPerUser) {
       throw new BadRequestException('You have already used this voucher the maximum number of times.');
     }
 
@@ -209,7 +209,7 @@ export class PromotionsService {
     rideId: string,
   ): Promise<void> {
     const userVoucherRepo = manager.getRepository(UserVoucher);
-    const userVoucher = await userVoucherRepo.findOneBy({ user_id: userId, voucher_id: voucherId, status: UserVoucherStatus.ACTIVE });
+    const userVoucher = await userVoucherRepo.findOneBy({ userId: userId, voucherId: voucherId, status: UserVoucherStatus.ACTIVE });
 
     if (!userVoucher) {
       throw new BadRequestException('Voucher not available for this user or already used.');
@@ -232,13 +232,13 @@ export class PromotionsService {
 
   private _calculateDiscount(voucher: Voucher, rideAmount: number): number {
     let discount = 0;
-    if (voucher.discount_type === DiscountType.PERCENTAGE) {
-      discount = rideAmount * (voucher.discount_value / 100);
-      if (voucher.max_discount_amount) {
-        discount = Math.min(discount, voucher.max_discount_amount);
+    if (voucher.discountType === DiscountType.PERCENTAGE) {
+      discount = rideAmount * (voucher.discountValue / 100);
+      if (voucher.maxDiscountAmount) {
+        discount = Math.min(discount, voucher.maxDiscountAmount);
       }
     } else { // FIXED_AMOUNT
-      discount = voucher.discount_value;
+      discount = voucher.discountValue;
     }
     // Ensure discount is not more than the ride amount itself
     return Math.min(discount, rideAmount);
