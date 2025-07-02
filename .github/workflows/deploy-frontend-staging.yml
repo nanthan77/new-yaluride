@@ -1,0 +1,44 @@
+name: Deploy Frontend to Staging
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  build-and-deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to staging
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend/dist
+          destination_dir: staging
+          cname: yaluride-staging.pages.dev
+
+      - name: Verify deployment
+        run: |
+          echo "Frontend deployed to staging environment"
+          echo "URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/staging/"

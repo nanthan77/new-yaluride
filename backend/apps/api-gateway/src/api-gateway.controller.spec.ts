@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ApiGatewayController } from './api-gateway.controller';
 import { ApiGatewayService } from './api-gateway.service';
 import { SERVICE_NAMES } from './api-gateway.module';
+import { JwtAuthGuard, RolesGuard } from '@yaluride/auth';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 const createMockClientProxy = () => ({
   connect: jest.fn().mockResolvedValue(undefined),
@@ -28,11 +30,11 @@ describe('ApiGatewayController', () => {
         { provide: SERVICE_NAMES.NOTIFICATION_SERVICE, useFactory: createMockClientProxy },
       ],
     })
-      .overrideGuard(require('@yaluride/auth').JwtAuthGuard)
+      .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: jest.fn().mockReturnValue(true) })
-      .overrideGuard(require('@yaluride/auth').RolesGuard)
+      .overrideGuard(RolesGuard)
       .useValue({ canActivate: jest.fn().mockReturnValue(true) })
-      .overrideGuard(require('@nestjs/throttler').ThrottlerGuard)
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: jest.fn().mockReturnValue(true) })
       .compile();
 
