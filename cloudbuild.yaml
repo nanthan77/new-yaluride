@@ -1,0 +1,203 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/api-gateway/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/api-gateway:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-api-gateway'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/user-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/user-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-user-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/ride-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/ride-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-ride-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/payment-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/payment-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-payment-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/communication-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/communication-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-communication-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/matching-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/matching-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-matching-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/bidding-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/bidding-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-bidding-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/gamification-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/gamification-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-gamification-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/promotions-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/promotions-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-promotions-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/admin-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/admin-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-admin-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/alert-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/alert-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-alert-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/route-template-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/route-template-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-route-template-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/tour-package-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/tour-package-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-tour-package-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'backend/apps/voice-service/Dockerfile',
+      '-t', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/voice-service:$COMMIT_SHA',
+      'backend'
+    ]
+    id: 'build-voice-service'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/api-gateway:$COMMIT_SHA']
+    waitFor: ['build-api-gateway']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/user-service:$COMMIT_SHA']
+    waitFor: ['build-user-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/ride-service:$COMMIT_SHA']
+    waitFor: ['build-ride-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/payment-service:$COMMIT_SHA']
+    waitFor: ['build-payment-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/communication-service:$COMMIT_SHA']
+    waitFor: ['build-communication-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/matching-service:$COMMIT_SHA']
+    waitFor: ['build-matching-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/bidding-service:$COMMIT_SHA']
+    waitFor: ['build-bidding-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/gamification-service:$COMMIT_SHA']
+    waitFor: ['build-gamification-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/promotions-service:$COMMIT_SHA']
+    waitFor: ['build-promotions-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/admin-service:$COMMIT_SHA']
+    waitFor: ['build-admin-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/alert-service:$COMMIT_SHA']
+    waitFor: ['build-alert-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/route-template-service:$COMMIT_SHA']
+    waitFor: ['build-route-template-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/tour-package-service:$COMMIT_SHA']
+    waitFor: ['build-tour-package-service']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/voice-service:$COMMIT_SHA']
+    waitFor: ['build-voice-service']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'yaluride-api-gateway',
+      '--image', 'asia-south1-docker.pkg.dev/yalu-ride/cloud-run-source-deploy/api-gateway:$COMMIT_SHA',
+      '--region', 'asia-south1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--port', '3000',
+      '--memory', '512Mi',
+      '--cpu', '1',
+      '--max-instances', '10'
+    ]
+    waitFor: ['build-api-gateway']
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: '3600s'

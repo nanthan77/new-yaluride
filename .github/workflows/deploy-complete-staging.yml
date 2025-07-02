@@ -133,6 +133,7 @@ jobs:
           tags: yaluride/${{ matrix.service }}:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          no-cache: true
 
       - name: Test Docker image
         run: |
@@ -140,8 +141,16 @@ jobs:
           docker images yaluride/${{ matrix.service }}:test
           echo "Docker build successful for ${{ matrix.service }}"
 
+      - name: Login to GitHub Container Registry
+        if: ${{ secrets.GITHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Push to registry (if registry access available)
-        if: ${{ secrets.REGISTRY_TOKEN != '' }}
+        if: ${{ secrets.GITHUB_TOKEN != '' }}
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -152,6 +161,7 @@ jobs:
             ghcr.io/nanthan77/new-yaluride/${{ matrix.service }}:staging
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          no-cache: true
 
   validate-deployment-config:
     runs-on: ubuntu-latest
