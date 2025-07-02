@@ -24,3 +24,11 @@ export enum PaymentStatus {
   FAILED = 'failed',
   REFUNDED = 'refunded',
 }
+
+export enum PointReason {
+  RIDE_COMPLETED = 'ride_completed',
+  FIVE_STAR_RATING = 'five_star_rating',
+  BADGE_AWARDED = 'badge_awarded',
+  REFERRAL_BONUS = 'referral_bonus',
+  DAILY_LOGIN = 'daily_login',
+}

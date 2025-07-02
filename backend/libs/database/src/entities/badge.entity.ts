@@ -8,11 +8,17 @@ export class Badge {
   @Column()
   name: string;
 
+  @Column({ unique: true })
+  code: string;
+
   @Column('text')
   description: string;
 
   @Column({ nullable: true })
   iconUrl: string;
+
+  @Column('int', { default: 0 })
+  pointsReward: number;
 
   @Column('json', { nullable: true })
   criteria: any;
