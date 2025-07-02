@@ -90,6 +90,16 @@ Each service has its own Dockerfile for containerized deployment.
 ### Kubernetes
 Deployment configurations are available in the `/infrastructure` directory.
 
+### Staging Deployment
+The staging deployment is automatically triggered when changes are pushed to the `develop` branch. The deployment includes:
+
+- Database migrations via Supabase
+- Edge Functions deployment  
+- Docker image builds for all 14 microservices
+- Kubernetes deployment to staging cluster
+
+Deployment status can be monitored via GitHub Actions workflows.
+
 ### Environment Variables
 See individual service `.env.example` files for required configuration.
 
