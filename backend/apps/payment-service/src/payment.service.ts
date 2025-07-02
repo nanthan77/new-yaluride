@@ -13,6 +13,7 @@ import { DataSource, Repository } from 'typeorm';
 import Stripe from 'stripe';
 import * as crypto from 'crypto';
 import { ClientProxy } from '@nestjs/microservices';
+import { RideStatus, PaymentStatus } from '@yaluride/common';
 
 // --- Placeholder Entities (replace with actual imports from libs) ---
 // These would typically be in a shared library, e.g., `@yaluride/database-entities`
@@ -136,6 +137,71 @@ export class PaymentService {
 
   async processRidePayment(rideId: string): Promise<void> {
     this.logger.log(`Processing ride payment for ride ${rideId}`);
+    
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const rideRepo = queryRunner.manager.getRepository(Ride);
+      const paymentRepo = queryRunner.manager.getRepository(Payment);
+      const userRepo = queryRunner.manager.getRepository(User);
+
+      // 1. Validate the ride
+      const ride = await rideRepo.findOneBy({ id: rideId });
+      if (!ride) {
+        throw new NotFoundException(`Ride with ID ${rideId} not found.`);
+      }
+      if (ride.status !== 'COMPLETED') {
+        throw new BadRequestException('Payment can only be processed for completed rides.');
+      }
+      if (ride.payment_status === 'completed') {
+        throw new BadRequestException('Payment has already been processed for this ride.');
+      }
+
+      // 2. Get driver information to determine commission
+      const driver = await userRepo.findOneBy({ id: ride.driver_id });
+      const isEligibleForWaiver = driver && (driver as any).totalRides < COMMISSION_WAIVER_DRIVER_COUNT;
+      
+      const platformCommission = isEligibleForWaiver ? 0 : ride.fare * COMMISSION_RATE;
+      const driverEarnings = ride.fare - platformCommission;
+
+      const payment = paymentRepo.create({
+        ride_id: rideId,
+        user_id: ride.passenger_id,
+        amount: ride.fare,
+        currency: 'USD',
+        gateway: 'stripe',
+        transaction_id: `system_${rideId}_${Date.now()}`,
+        payment_type: 'FARE',
+        status: 'succeeded',
+      });
+      const savedPayment = await paymentRepo.save(payment);
+
+      await rideRepo.update(rideId, { payment_status: 'completed' });
+
+      // 6. Commit transaction
+      await queryRunner.commitTransaction();
+
+      // 7. Emit event after successful transaction
+      this.eventsClient.emit('payment.processed', {
+        rideId: rideId,
+        paymentId: (savedPayment as any).id,
+        status: 'COMPLETED',
+      });
+
+      this.logger.log(`Payment processed successfully for ride ${rideId}`);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Failed to process payment for ride ${rideId}:`, error.stack);
+      
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(`Payment processing failed: ${error.message}`);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // ... existing createStripeIntent and createPayHereIntent methods
