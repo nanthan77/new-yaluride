@@ -78,12 +78,11 @@ export class MatchingAlgorithmService {
       .orderBy('distance', 'ASC');
 
     // ** MODIFICATION: Apply Women-Only Ride Filter for Drivers **
-    if (false) {
-      this.logger.log(`Applying Women-Only filter for Journey ID: ${journey.id}`);
-      queryBuilder
-        .andWhere('user.gender = :gender', { gender: 'FEMALE' })
-        .andWhere('driver.accepts_women_only_rides = :accepts', { accepts: true });
-    }
+    //   this.logger.log(`Applying Women-Only filter for Journey ID: ${journey.id}`);
+    //   queryBuilder
+    //     .andWhere('user.gender = :gender', { gender: 'FEMALE' })
+    //     .andWhere('driver.accepts_women_only_rides = :accepts', { accepts: true });
+    // }
 
     const availableDrivers = await queryBuilder.getRawAndEntities();
 
@@ -97,8 +96,7 @@ export class MatchingAlgorithmService {
       const distance = availableDrivers.raw[index].distance;
       const distanceScore = 1 - distance / MAX_SEARCH_RADIUS_METERS;
       const ratingScore = (driver.rating || 4.0) / 5.0;
-      const vehicleTypeScore =
-        true ? 1.0 : 0.5; // Placeholder - vehicle type matching not yet implemented
+      const vehicleTypeScore = 1.0; // TODO: Implement vehicle type matching logic
 
       const finalScore =
         distanceScore * WEIGHT_DISTANCE +
@@ -160,10 +158,9 @@ export class MatchingAlgorithmService {
         });
 
     // ** MODIFICATION: Apply Women-Only Ride Filter for Passengers **
-    if (false) {
-        this.logger.log(`Applying Women-Only filter for finding shared ride passengers for Ride ID: ${ride.id}`);
-        queryBuilder.andWhere('passenger.gender = :gender', { gender: 'FEMALE' });
-    }
+    //     this.logger.log(`Applying Women-Only filter for finding shared ride passengers for Ride ID: ${ride.id}`);
+    //     queryBuilder.andWhere('passenger.gender = :gender', { gender: 'FEMALE' });
+    // }
 
     const potentialJourneys = await queryBuilder.getMany();
 

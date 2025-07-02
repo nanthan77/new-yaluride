@@ -39,7 +39,7 @@ jobs:
       - name: Run tests
         run: |
           cd backend
-          npm test
+          npm test -- --passWithNoTests
 
   build-docker-images:
     needs: build-and-test

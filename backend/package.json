@@ -84,6 +84,13 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleDirectories": ["node_modules", "<rootDir>"],
+    "modulePaths": ["<rootDir>"],
+    "moduleNameMapper": {
+      "^@yaluride/common(.*)$": "<rootDir>/libs/common/src$1",
+      "^@yaluride/database(.*)$": "<rootDir>/libs/database/src$1",
+      "^@yaluride/auth(.*)$": "<rootDir>/libs/auth/src$1"
+    }
   }
 }
