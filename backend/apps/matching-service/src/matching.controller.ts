@@ -21,10 +21,10 @@ import { IsNotEmpty, IsNumber, IsEnum, IsOptional, Min, Max } from 'class-valida
 import { Expose, Type } from 'class-transformer';
 
 import { MatchingService } from './matching.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { VehicleType } from '../../../../libs/common/src/enums/vehicle.enums';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
+import { User } from '@yaluride/database';
+import { VehicleType } from '@yaluride/common';
 
 // --- DTOs (Data Transfer Objects) ---
 

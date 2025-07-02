@@ -1,10 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Journey } from '../../journey/src/core/entities/journey.entity';
-import { Driver } from '../../driver/src/entities/driver.entity';
-import { Ride } from '../../ride/src/entities/ride.entity';
-import { User } from '../../user/src/entities/user.entity'; // Assuming user entity is available for gender info
+import { Journey, Driver, Ride, User } from '@yaluride/database';
 
 // --- Type Definitions ---
 

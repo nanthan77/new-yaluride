@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Driver } from '../../../driver/src/core/entities/driver.entity'; // Adjust path based on monorepo structure
-import { VehicleType } from '../../../../libs/common/src/enums/vehicle.enums'; // Adjust path
+import { Driver } from '@yaluride/database';
+import { VehicleType } from '@yaluride/common';
 
 // --- Interfaces & Types ---
 

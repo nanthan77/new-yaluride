@@ -14,6 +14,9 @@ export class Ride {
   driverId: string;
 
   @Column()
+  journey_id: string;
+
+  @Column()
   pickupLocation: string;
 
   @Column()
