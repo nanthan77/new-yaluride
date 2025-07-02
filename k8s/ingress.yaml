@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yaluride-ingress
+  namespace: yaluride-production
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.yaluride.com
+    secretName: yaluride-api-tls-secret
+  rules:
+  - host: api.yaluride.com
+    http:
+      paths:
+      - path: /api/v1/users
+        pathType: Prefix
+        backend:
+          service:
+            name: user-service
+            port:
+              number: 80
+      - path: /api/v1/gamification
+        pathType: Prefix
+        backend:
+          service:
+            name: gamification-service
+            port:
+              number: 80
+      - path: /api/v1/payments
+        pathType: Prefix
+        backend:
+          service:
+            name: payment-service
+            port:
+              number: 80
+      - path: /api/v1/matching
+        pathType: Prefix
+        backend:
+          service:
+            name: matching-service
+            port:
+              number: 80
+      - path: /api/v1/promotions
+        pathType: Prefix
+        backend:
+          service:
+            name: promotions-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 80

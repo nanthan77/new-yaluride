@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: yaluride-production
+  labels:
+    name: yaluride-production
+    environment: production
