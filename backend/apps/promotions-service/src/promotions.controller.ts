@@ -98,7 +98,7 @@ export class PromotionsController {
             result.discountAmount,
             result.voucher,
         );
-    };
+    }
 
     // Note: The actual redemption of the voucher should happen when the ride payment is processed,
     // not just when checking the price. The payment service would call a `redeemVoucher` method
