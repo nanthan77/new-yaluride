@@ -25,7 +25,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend
-          npm ci
+          npm ci --legacy-peer-deps
 
       - name: Build frontend
         run: |
@@ -70,6 +70,7 @@ jobs:
         if: ${{ secrets.SUPABASE_PROJECT_ID_STAGING != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
         run: |
           cd supabase
+          echo "Deploying to project: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}"
           supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
           supabase db push --linked
         env:
@@ -99,6 +100,7 @@ jobs:
         if: ${{ secrets.SUPABASE_PROJECT_ID_STAGING != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
         run: |
           cd supabase
+          echo "Deploying edge functions to project: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}"
           supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
           supabase functions deploy --linked
         env:
@@ -156,8 +158,9 @@ jobs:
           file: ./backend/apps/${{ matrix.service }}/Dockerfile
           push: true
           tags: |
-            ghcr.io/nanthan77/new-yaluride/${{ matrix.service }}:develop
-            ghcr.io/nanthan77/new-yaluride/${{ matrix.service }}:staging
+            ghcr.io/${{ github.actor }}/yaluride-${{ matrix.service }}:develop
+            ghcr.io/${{ github.actor }}/yaluride-${{ matrix.service }}:staging
+            ghcr.io/${{ github.actor }}/yaluride-${{ matrix.service }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           no-cache: true
@@ -194,6 +197,12 @@ jobs:
           echo "- Database migrations (Supabase)" >> deployment-summary.md
           echo "- Edge functions (Supabase)" >> deployment-summary.md
           echo "- Kubernetes configuration structure" >> deployment-summary.md
+          echo "" >> deployment-summary.md
+          echo "### 🔧 Deployment Status:" >> deployment-summary.md
+          echo "- Docker images: ${{ secrets.GITHUB_TOKEN != '' && 'Built and pushed' || 'Built locally only' }}" >> deployment-summary.md
+          echo "- Database: ${{ secrets.SUPABASE_PROJECT_ID_STAGING != '' && 'Deployed' || 'Skipped (missing secrets)' }}" >> deployment-summary.md
+          echo "- Edge Functions: ${{ secrets.SUPABASE_PROJECT_ID_STAGING != '' && 'Deployed' || 'Skipped (missing secrets)' }}" >> deployment-summary.md
+          echo "- Frontend: ${{ secrets.PERSONAL_TOKEN != '' && 'Deployed to GitHub Pages' || 'Built only (missing PERSONAL_TOKEN)' }}" >> deployment-summary.md
           echo "" >> deployment-summary.md
           echo "### 🔧 Required for Full Deployment:" >> deployment-summary.md
           echo "- PERSONAL_TOKEN secret for GitHub Pages deployment" >> deployment-summary.md

@@ -1,0 +1,4 @@
+# Ignore everything to force Dockerfile usage
+*
+!backend/
+!cloudbuild.yaml
