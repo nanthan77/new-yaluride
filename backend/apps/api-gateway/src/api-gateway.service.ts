@@ -10,25 +10,33 @@ export class ApiGatewayService implements OnModuleInit {
 
   constructor(
     @Inject(SERVICE_NAMES.USER_SERVICE) private readonly userServiceClient: ClientProxy,
-    @Inject(SERVICE_NAMES.DRIVER_SERVICE) private readonly driverServiceClient: ClientProxy,
     @Inject(SERVICE_NAMES.RIDE_SERVICE) private readonly rideServiceClient: ClientProxy,
     @Inject(SERVICE_NAMES.PAYMENT_SERVICE) private readonly paymentServiceClient: ClientProxy,
-    @Inject(SERVICE_NAMES.LOCATION_SERVICE) private readonly locationServiceClient: ClientProxy,
     @Inject(SERVICE_NAMES.VOICE_SERVICE) private readonly voiceServiceClient: ClientProxy,
     @Inject(SERVICE_NAMES.ADMIN_SERVICE) private readonly adminServiceClient: ClientProxy,
-    @Inject(SERVICE_NAMES.ANALYTICS_SERVICE) private readonly analyticsServiceClient: ClientProxy,
-    @Inject(SERVICE_NAMES.NOTIFICATION_SERVICE) private readonly notificationServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.BIDDING_SERVICE) private readonly biddingServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.COMMUNICATION_SERVICE) private readonly communicationServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.GAMIFICATION_SERVICE) private readonly gamificationServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.MATCHING_SERVICE) private readonly matchingServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.PROMOTIONS_SERVICE) private readonly promotionsServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.ROUTE_TEMPLATE_SERVICE) private readonly routeTemplateServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.TOUR_PACKAGE_SERVICE) private readonly tourPackageServiceClient: ClientProxy,
+    @Inject(SERVICE_NAMES.ALERT_SERVICE) private readonly alertServiceClient: ClientProxy,
   ) {
     // Populate the clients map for easy access
     this.clients.set(SERVICE_NAMES.USER_SERVICE, this.userServiceClient);
-    this.clients.set(SERVICE_NAMES.DRIVER_SERVICE, this.driverServiceClient);
     this.clients.set(SERVICE_NAMES.RIDE_SERVICE, this.rideServiceClient);
     this.clients.set(SERVICE_NAMES.PAYMENT_SERVICE, this.paymentServiceClient);
-    this.clients.set(SERVICE_NAMES.LOCATION_SERVICE, this.locationServiceClient);
     this.clients.set(SERVICE_NAMES.VOICE_SERVICE, this.voiceServiceClient);
     this.clients.set(SERVICE_NAMES.ADMIN_SERVICE, this.adminServiceClient);
-    this.clients.set(SERVICE_NAMES.ANALYTICS_SERVICE, this.analyticsServiceClient);
-    this.clients.set(SERVICE_NAMES.NOTIFICATION_SERVICE, this.notificationServiceClient);
+    this.clients.set(SERVICE_NAMES.BIDDING_SERVICE, this.biddingServiceClient);
+    this.clients.set(SERVICE_NAMES.COMMUNICATION_SERVICE, this.communicationServiceClient);
+    this.clients.set(SERVICE_NAMES.GAMIFICATION_SERVICE, this.gamificationServiceClient);
+    this.clients.set(SERVICE_NAMES.MATCHING_SERVICE, this.matchingServiceClient);
+    this.clients.set(SERVICE_NAMES.PROMOTIONS_SERVICE, this.promotionsServiceClient);
+    this.clients.set(SERVICE_NAMES.ROUTE_TEMPLATE_SERVICE, this.routeTemplateServiceClient);
+    this.clients.set(SERVICE_NAMES.TOUR_PACKAGE_SERVICE, this.tourPackageServiceClient);
+    this.clients.set(SERVICE_NAMES.ALERT_SERVICE, this.alertServiceClient);
   }
 
   /**
@@ -116,5 +124,44 @@ export class ApiGatewayService implements OnModuleInit {
 
     client.emit(eventPattern, payload);
     this.logger.log(`Event "${eventPattern}" emitted to ${serviceName}.`);
+  }
+
+  /**
+   * Forward an HTTP request to a microservice.
+   * This method adapts the Express request to the microservice message pattern.
+   *
+   * @param serviceName - The injection token of the microservice client.
+   * @param req - The Express request object.
+   * @returns A Promise that resolves with the response from the microservice.
+   */
+  async forwardRequest(serviceName: string, req: any): Promise<any> {
+    const { method, url, body, query, params, headers } = req;
+    
+    const pathParts = url.split('/').filter(Boolean);
+    const command = pathParts.slice(2).join('/') || 'index'; // Skip 'api' and service name
+    
+    const payload = {
+      method,
+      path: command,
+      body,
+      query,
+      params,
+      headers: {
+        'content-type': headers['content-type'],
+        'authorization': headers['authorization'],
+      },
+    };
+
+    try {
+      const result = await this.send(serviceName, `${method.toLowerCase()}_${command}`, payload);
+      
+      return {
+        status: result.statusCode || 200,
+        headers: result.headers || { 'content-type': 'application/json' },
+        data: result.data || result,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 }

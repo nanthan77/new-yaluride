@@ -25,6 +25,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiParam,
+  ApiProperty,
 } from '@nestjs/swagger';
 import {
   IsString,
@@ -37,11 +38,10 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Expose, Type } from 'class-transformer';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Assuming path to jwt guard
-import { User as UserDecorator } from '../common/decorators/user.decorator'; // Custom decorator to get user from request
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator, UserRole } from '@yaluride/common';
+import { User } from '@yaluride/database';
 import { ClientProxy } from '@nestjs/microservices';
-import { Throttle, SkipThrottle } from '@nestjs/throttler'; // For rate limiting
-import { User, UserRole } from './entities/user.entity'; // Assuming User entity
 
 // --- Data Transfer Objects (DTOs) ---
 
@@ -239,11 +239,10 @@ export class UserController {
   @ApiResponse({ status: 201, description: 'User registered successfully.', type: UserResponseDto })
   @ApiResponse({ status: 400, description: 'Bad Request - Validation error or user already exists.' })
   @ApiResponse({ status: 500, description: 'Internal Server Error.' })
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   async register(@Body() registerUserDto: RegisterUserDto): Promise<UserResponseDto> {
     try {
       const user = await this.userService.register(registerUserDto);
-      this.userEventsClient.emit('user_registered', { userId: user.id, phoneNumber: user.phoneNumber, name: user.name, language: user.language });
+      this.userEventsClient.emit('user_registered', { userId: user.id, phoneNumber: user.phoneNumber, name: user.fullName, language: user.language });
       return new UserResponseDto(user);
     } catch (error) {
       if (error.message.includes('already exists')) { // More specific error handling from service
@@ -260,7 +259,6 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User logged in successfully.', type: LoginResponseDto })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid credentials.' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid credentials.' })
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async login(@Body() loginUserDto: LoginUserDto): Promise<LoginResponseDto> {
     const result = await this.userService.login(loginUserDto.phoneNumber, loginUserDto.password);
     if (!result) {
@@ -277,7 +275,6 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User profile retrieved successfully.', type: UserResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized - Token missing or invalid.' })
   @ApiResponse({ status: 404, description: 'Not Found - User profile not found.' })
-  @SkipThrottle() // Profile fetching might be frequent
   async getProfile(@UserDecorator() currentUser: User): Promise<UserResponseDto> {
     // The UserDecorator extracts the user object injected by JwtAuthGuard
     const user = await this.userService.findById(currentUser.id);
@@ -335,7 +332,6 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Password reset instructions sent if user exists.' })
   @ApiResponse({ status: 400, description: 'Bad Request - Validation error.' })
   @ApiResponse({ status: 404, description: 'Not Found - User with provided phone number not found.' })
-  @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 requests per 5 minutes
   async requestPasswordReset(
     @Body() requestPasswordResetDto: RequestPasswordResetDto,
   ): Promise<{ message: string }> {
@@ -394,7 +390,6 @@ export class UserController {
   @ApiBody({ type: ResetPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request - Invalid token or validation error.' })
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
     try {
       await this.userService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
@@ -451,7 +446,6 @@ export class UserController {
   @ApiResponse({ status: 200, type: UserResponseDto })
   @ApiResponse({ status: 403, description: 'Forbidden.'})
   @ApiResponse({ status: 404, description: 'User not found.'})
-  @SkipThrottle()
   async getUserByIdForAdmin(@UserDecorator() adminUser: User, @Param('id') userId: string): Promise<UserResponseDto> {
     // Implement role check for adminUser here or via AdminRoleGuard
     if (adminUser.role !== UserRole.ADMIN) {

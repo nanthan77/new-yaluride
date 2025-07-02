@@ -6,14 +6,17 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   email: string;
 
   @Column()
   fullName: string;
 
-  @Column({ nullable: true })
+  @Column({ unique: true })
   phoneNumber: string;
+
+  @Column({ nullable: true })
+  passwordHash: string;
 
   @Column({
     type: 'enum',
@@ -24,6 +27,36 @@ export class User {
 
   @Column({ default: false })
   isVerified: boolean;
+
+  @Column({ default: false })
+  phoneVerified: boolean;
+
+  @Column({ default: false })
+  emailVerified: boolean;
+
+  @Column({ default: false })
+  gnVerified: boolean;
+
+  @Column({ default: false })
+  identityVerified: boolean;
+
+  @Column({ default: false })
+  hasCompletedOnboarding: boolean;
+
+  @Column({ nullable: true })
+  gnDivisionId: string;
+
+  @Column({ nullable: true })
+  gnVerifiedStatus: string;
+
+  @Column('text', { array: true, nullable: true })
+  gnVerificationDocuments: string[];
+
+  @Column({ nullable: true })
+  profilePictureUrl: string;
+
+  @Column({ default: 'en' })
+  language: string;
 
   @Column({
     type: 'enum',

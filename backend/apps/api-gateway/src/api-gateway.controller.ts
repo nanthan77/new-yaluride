@@ -18,15 +18,10 @@ import { Request, Response } from 'express';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 import { ApiGatewayService } from './api-gateway.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../../libs/auth/src/guards/roles.guard';
-import { Roles } from '../../../../libs/common/src/decorators/roles.decorator';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { JwtAuthGuard, RolesGuard } from '@yaluride/auth';
+import { Roles, UserRole, UserDecorator, User, AllExceptionsFilter } from '@yaluride/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { SERVICE_NAMES } from './api-gateway.module';
-import { AllExceptionsFilter } from '../../../../libs/common/src/filters/all-exceptions.filter';
 
 /*
  * NOTE on Security Best Practices implemented here vs in main.ts:

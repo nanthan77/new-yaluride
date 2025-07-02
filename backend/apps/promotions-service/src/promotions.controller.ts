@@ -20,17 +20,13 @@ import {
 } from '@nestjs/swagger';
 
 import { PromotionsService } from './promotions.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../../libs/auth/src/guards/roles.guard';
-import { Roles } from '../../../../libs/common/src/decorators/roles.decorator';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
+import { JwtAuthGuard, RolesGuard } from '@yaluride/auth';
+import { Roles, UserDecorator, UserRole } from '@yaluride/common';
+import { User } from '@yaluride/database';
 import {
     CreateVoucherDto,
     ApplyVoucherDto,
     VoucherDto,
-    UserVoucherDto,
     ApplyVoucherResponseDto,
 } from './dto/promotions.dto';
 
@@ -55,7 +51,7 @@ export class PromotionsController {
     async createVoucher(@Body() createVoucherDto: CreateVoucherDto): Promise<VoucherDto> {
         this.logger.log(`Admin creating new voucher with code: ${createVoucherDto.code}`);
         const voucher = await this.promotionsService.createVoucher(createVoucherDto);
-        return new VoucherDto(voucher);
+        return voucher;
     }
 
     // --- Authenticated User Endpoints ---
@@ -88,20 +84,22 @@ export class PromotionsController {
         @UserDecorator() user: User,
         @Body() applyVoucherDto: ApplyVoucherDto,
     ): Promise<ApplyVoucherResponseDto> {
-        this.logger.log(`User ${user.id} applying voucher '${applyVoucherDto.code}' to ride amount ${applyVoucherDto.rideAmount}`);
+        this.logger.log(`User ${user.id} applying voucher '${applyVoucherDto.voucherCode}' to order amount ${applyVoucherDto.orderAmount}`);
         
         // This service method now handles both validation and discount calculation
         const result = await this.promotionsService.validateAndCalculateDiscount(
             user.id,
-            applyVoucherDto.code,
-            applyVoucherDto.rideAmount
+            applyVoucherDto.voucherCode,
+            applyVoucherDto.orderAmount
         );
 
-        return new ApplyVoucherResponseDto(
-            applyVoucherDto.rideAmount,
-            result.discountAmount,
-            result.voucher,
-        );
+        return {
+            success: true,
+            discountAmount: result.discountAmount,
+            finalAmount: applyVoucherDto.orderAmount - result.discountAmount,
+            message: 'Voucher applied successfully',
+            voucher: result.voucher,
+        };
     };
 
     // Note: The actual redemption of the voucher should happen when the ride payment is processed,

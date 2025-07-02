@@ -13,14 +13,10 @@ import { Repository, DataSource, In } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { randomBytes } from 'crypto';
 
-import { Voucher } from '../../../../libs/database/src/entities/voucher.entity';
-import { UserVoucher } from '../../../../libs/database/src/entities/user-voucher.entity';
-import { ReferralCode } from '../../../../libs/database/src/entities/referral-code.entity';
-import { User } from '../../../../libs/database/src/entities/user.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
+import { Voucher, UserVoucher, ReferralCode, User, Ride } from '@yaluride/database';
 
 import { CreateVoucherDto, VoucherDto, ApplyVoucherResponseDto } from './dto/promotions.dto';
-import { DiscountType, UserVoucherStatus } from '../../../../libs/common/src/enums/promotion.enums';
+import { DiscountType, UserVoucherStatus } from '@yaluride/common';
 import { ApplyVoucherDto, ValidateVoucherDto, VoucherValidationResponse } from './dto/promotions.dto';
 
 @Injectable()

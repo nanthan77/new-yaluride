@@ -17,3 +17,6 @@ export * from './entities/badge.entity';
 export * from './entities/user-badge.entity';
 export * from './entities/points-log.entity';
 export * from './entities/message.entity';
+export * from './entities/journey.entity';
+export * from './entities/bid.entity';
+export * from './entities/ride-passenger.entity';

@@ -14,7 +14,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ClientProxy } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common';
 
-import { User, UserRole } from './entities/user.entity';
+import { User } from '@yaluride/database';
+import { UserRole } from '@yaluride/common';
 import { RegisterUserDto, UpdateProfileDto, VerifyGNDto } from './user.controller';
 
 const SALT_ROUNDS = 10;
@@ -47,7 +48,7 @@ export class UserService {
 
   async register(registerUserDto: RegisterUserDto): Promise<User> {
     const existingUser = await this.userRepository.findOne({
-      where: { phone_number: registerUserDto.phoneNumber },
+      where: { phoneNumber: registerUserDto.phoneNumber },
     });
 
     if (existingUser) {
@@ -57,35 +58,38 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(registerUserDto.password, SALT_ROUNDS);
 
     const newUser = this.userRepository.create({
-      ...registerUserDto,
-      password_hash: hashedPassword,
-      role: UserRole.PASSENGER, // Default role
-      phone_number: registerUserDto.phoneNumber,
-      phone_verified: true, // Assuming OTP verification happens before this
-      email_verified: false,
-      gn_verified: false,
-      identity_verified: false,
-      has_completed_onboarding: false, // Initialize onboarding status
+      fullName: registerUserDto.name,
+      phoneNumber: registerUserDto.phoneNumber,
+      email: null, // Email not provided in registration
+      passwordHash: hashedPassword,
+      role: UserRole.PASSENGER,
+      isVerified: true,
+      phoneVerified: true,
+      emailVerified: false,
+      gnVerified: false,
+      identityVerified: false,
+      hasCompletedOnboarding: false,
+      language: registerUserDto.language || 'en',
     });
 
-    this.logger.log(`Registering new user: ${newUser.name}`);
+    this.logger.log(`Registering new user: ${newUser.fullName}`);
     return this.userRepository.save(newUser);
   }
 
   async login(phoneNumber: string, pass: string): Promise<{ accessToken: string; user: User } | null> {
-    const user = await this.userRepository.findOne({ where: { phone_number: phoneNumber } });
+    const user = await this.userRepository.findOne({ where: { phoneNumber: phoneNumber } });
     if (!user) {
       this.logger.warn(`Login attempt for non-existent user: ${phoneNumber}`);
       return null;
     }
 
-    const isPasswordMatching = await bcrypt.compare(pass, user.password_hash);
+    const isPasswordMatching = await bcrypt.compare(pass, user.passwordHash);
     if (!isPasswordMatching) {
       this.logger.warn(`Invalid password attempt for user: ${user.id}`);
       return null;
     }
 
-    const payload = { sub: user.id, role: user.role, phone: user.phone_number };
+    const payload = { sub: user.id, role: user.role, phone: user.phoneNumber };
     const accessToken = this.jwtService.sign(payload);
 
     this.logger.log(`User ${user.id} logged in successfully.`);
@@ -133,7 +137,7 @@ export class UserService {
     }
 
     // 2. Update the database
-    await this.userRepository.update(userId, { has_completed_onboarding: hasCompletedOnboarding });
+    await this.userRepository.update(userId, { hasCompletedOnboarding: hasCompletedOnboarding });
     
     // 3. Return the fully updated profile
     const updatedUser = await this.findById(userId);
