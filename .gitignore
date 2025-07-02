@@ -7,8 +7,6 @@ pnpm-lock.yaml
 */pnpm-lock.yaml
 yarn.lock
 */yarn.lock
-package-lock.json
-*/package-lock.json
 
 # Environment variables
 .env
