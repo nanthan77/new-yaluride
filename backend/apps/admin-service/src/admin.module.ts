@@ -7,11 +7,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 // Import all required entities that the Admin Service will manage or query
-import { User } from '../../../../libs/database/src/entities/user.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
-import { DriverVerification } from '../../../../libs/database/src/entities/driver-verification.entity';
-import { Profile } from '../../../../libs/database/src/entities/profile.entity';
-import { Payment } from '../../../../libs/database/src/entities/payment.entity';
+import { User, Ride, DriverVerification, Profile, Payment } from '@yaluride/database';
 
 @Module({
   imports: [

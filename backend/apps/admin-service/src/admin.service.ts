@@ -11,10 +11,7 @@ import { Repository, In, Like } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 
 // Assuming entities and enums are in a shared library
-import { User } from '../../../../libs/database/src/entities/user.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
-import { Company } from '../../../../libs/database/src/entities/company.entity';
-import { CompanyEmployee } from '../../../../libs/database/src/entities/company-employee.entity';
+import { User, Ride, Company, CompanyEmployee } from '@yaluride/database';
 import { TravelPolicy } from '../../../../libs/database/src/entities/travel-policy.entity';
 import { UserRole, ModerationStatus } from '../../../../libs/common/src/enums/user.enums';
 import { ApproveVerificationDto, RejectVerificationDto } from './dto/admin.dto';
