@@ -5,12 +5,12 @@ import {
   ForbiddenException,
   Inject,
   forwardRef,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 
-import { Message } from '../../../../libs/database/src/entities/message.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
+import { Message, Ride } from '@yaluride/database';
 import { CommunicationGateway } from './communication.gateway';
 
 // --- DTOs (Data Transfer Objects) ---
@@ -62,17 +62,17 @@ export class CommunicationService {
     if (!ride) {
       throw new NotFoundException(`Ride with ID ${rideId} not found.`);
     }
-    if (ride.passenger_id !== senderId && ride.driver_id !== senderId) {
+    if (ride.passengerId !== senderId && ride.driverId !== senderId) {
       throw new ForbiddenException(`User ${senderId} is not a participant in ride ${rideId}.`);
     }
 
     // 2. Create and save the message entity
     const newMessage = this.messageRepository.create({
-      ride_id: rideId,
-      sender_id: senderId,
+      rideId: rideId,
+      senderId: senderId,
       content,
       // The recipient is the other person in the ride
-      recipient_id: senderId === ride.passenger_id ? ride.driver_id : ride.passenger_id,
+      recipientId: senderId === ride.passengerId ? ride.driverId : ride.passengerId,
     });
 
     try {
@@ -100,7 +100,7 @@ export class CommunicationService {
     if (!ride) {
       throw new NotFoundException(`Ride with ID ${rideId} not found.`);
     }
-    if (ride.passenger_id !== userId && ride.driver_id !== userId) {
+    if (ride.passengerId !== userId && ride.driverId !== userId) {
       throw new ForbiddenException(`User ${userId} is not a participant in ride ${rideId}.`);
     }
 
@@ -108,8 +108,8 @@ export class CommunicationService {
 
     try {
       return this.messageRepository.find({
-        where: { ride_id: rideId },
-        order: { created_at: 'ASC' }, // Oldest messages first
+        where: { rideId: rideId },
+        order: { createdAt: 'ASC' }, // Oldest messages first
         relations: ['sender'], // Optionally join sender's profile info
       });
     } catch (error) {
@@ -143,7 +143,7 @@ export class CommunicationService {
 
     // 1. Verify the user is part of the ride (similar to getChatHistory)
     const ride = await this.rideRepository.findOneBy({ id: rideId });
-    if (!ride || (ride.passenger_id !== readerId && ride.driver_id !== readerId)) {
+    if (!ride || (ride.passengerId !== readerId && ride.driverId !== readerId)) {
       throw new ForbiddenException('You can only mark messages as read in your own rides.');
     }
 
@@ -152,12 +152,12 @@ export class CommunicationService {
       const result = await this.messageRepository.update(
         {
           id: In(messageIds),
-          recipient_id: readerId, // Ensure user can only mark messages sent TO them
+          recipientId: readerId, // Ensure user can only mark messages sent TO them
           status: 'delivered', // Only update messages that have been delivered
         },
         {
           status: 'read',
-          read_at: new Date(),
+          readAt: new Date(),
         },
       );
 
@@ -165,7 +165,7 @@ export class CommunicationService {
 
       // 3. Broadcast the read receipt to the other user in the room
       if (result.affected && result.affected > 0) {
-        const otherUserId = readerId === ride.passenger_id ? ride.driver_id : ride.passenger_id;
+        const otherUserId = readerId === ride.passengerId ? ride.driverId : ride.passengerId;
         if (otherUserId) {
             this.communicationGateway.broadcastReadReceipt(rideId, otherUserId, messageIds);
         }

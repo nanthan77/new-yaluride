@@ -20,15 +20,15 @@ import {
 } from '@nestjs/swagger';
 
 import { CommunicationService } from './communication.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
+import { User } from '@yaluride/database';
 import {
   GetCannedResponsesQueryDto,
   MessageDto,
   CannedResponseDto,
 } from './core/dto/communication.dto';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
+import { UserRole } from '@yaluride/common';
 
 
 @ApiTags('Communication & Chat')
