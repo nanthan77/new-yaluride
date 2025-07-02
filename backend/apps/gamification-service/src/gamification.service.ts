@@ -8,8 +8,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
-import { GamificationEvent, GamificationEventType } from './interfaces/gamification-event.interface';
 import { Badge, UserBadge, PointsLog, Profile, Ride } from '@yaluride/database';
+import { PointReason, RideStatus } from '@yaluride/common';
+import { GamificationEvent, GamificationEventType } from './interfaces/gamification-event.interface';
 import { LeaderboardEntryDto, UserBadgeDto, BadgeDto } from './dto/gamification.dto';
 
 // Define badge criteria in a structured way
@@ -156,16 +157,16 @@ export class GamificationService {
     await userBadgeRepo.save(newUserBadge);
 
     // Award points for the badge
-    if (badge.points_reward > 0) {
-      await this._addPoints(profile, badge.points_reward, PointReason.BADGE_AWARDED, manager, { badgeId: badge.id });
+    if (badge.pointsReward > 0) {
+      await this._addPoints(profile, badge.pointsReward, PointReason.BADGE_AWARDED, manager, { badgeId: badge.id });
     }
 
     // Emit an event to notify the user
     this.eventsClient.emit('gamification.badge.unlocked', {
       userId: profile.id,
       badgeName: badge.name,
-      badgeIconUrl: badge.icon_url,
-      pointsAwarded: badge.points_reward,
+      badgeIconUrl: badge.iconUrl,
+      pointsAwarded: badge.pointsReward,
     });
   }
 
@@ -193,19 +194,19 @@ export class GamificationService {
   // --- Badge Criteria Checkers ---
 
   private async checkFirstRide(profile: Profile, rideRepo: Repository<Ride>): Promise<boolean> {
-    const rideCount = await rideRepo.count({ where: { passenger_id: profile.id, status: 'COMPLETED' } });
+    const rideCount = await rideRepo.count({ where: { passengerId: profile.id, status: RideStatus.COMPLETED } });
     return rideCount >= 1;
   }
 
   private async checkRideCount(profile: Profile, rideRepo: Repository<Ride>, count: number): Promise<boolean> {
-    const rideCount = await rideRepo.count({ where: { passenger_id: profile.id, status: 'COMPLETED' } });
+    const rideCount = await rideRepo.count({ where: { passengerId: profile.id, status: RideStatus.COMPLETED } });
     return rideCount >= count;
   }
   
   private async checkFirstFiveStarRating(profile: Profile, rideRepo: Repository<Ride>): Promise<boolean> {
     // This assumes a 'ratings' table exists and can be queried.
     // As a placeholder, we'll check rides where this user was the driver and a rating was given.
-    const ratedRide = await rideRepo.findOne({ where: { driver_id: profile.id, passenger_rating: 5 } });
+    const ratedRide = await rideRepo.findOne({ where: { driverId: profile.id, passengerRating: 5 } });
     return !!ratedRide;
   }
 
@@ -219,9 +220,9 @@ export class GamificationService {
 
   async getBadgesForUser(userId: string): Promise<UserBadgeDto[]> {
     const userBadges = await this.userBadgeRepository.find({
-      where: { user_id: userId },
+      where: { userId: userId },
       relations: ['badge'],
-      order: { earned_at: 'DESC' },
+      order: { earnedAt: 'DESC' },
     });
     return userBadges.map(ub => Object.assign(new UserBadgeDto(), ub));
   }
@@ -229,17 +230,17 @@ export class GamificationService {
   async getLeaderboard(page: number = 1, limit: number = 20): Promise<LeaderboardEntryDto[]> {
     const offset = (page - 1) * limit;
     const users = await this.profileRepository.find({
-      select: ['id', 'display_name', 'points_balance'],
-      order: { points_balance: 'DESC' },
+      select: ['id', 'displayName', 'pointsBalance'],
+      order: { pointsBalance: 'DESC' },
       take: limit,
       skip: offset,
     });
 
     return users.map((user, index) => ({
+      id: user.id,
+      displayName: user.displayName,
+      pointsBalance: user.pointsBalance,
       rank: offset + index + 1,
-      user_id: user.id,
-      display_name: user.display_name,
-      points_balance: user.points_balance,
     }));
   }
 }

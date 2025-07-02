@@ -24,6 +24,12 @@ export class Profile {
   @Column({ nullable: true })
   emergencyContact: string;
 
+  @Column({ nullable: true })
+  displayName: string;
+
+  @Column('int', { default: 0 })
+  pointsBalance: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

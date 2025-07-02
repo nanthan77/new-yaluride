@@ -39,6 +39,12 @@ export class Ride {
   @Column({ type: 'timestamp', nullable: true })
   scheduledAt: Date;
 
+  @Column({ type: 'int', nullable: true })
+  passengerRating: number;
+
+  @Column({ type: 'int', nullable: true })
+  driverRating: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -75,7 +75,7 @@ export class GamificationController {
   async getLeaderboard(
     @Query() { page, limit }: PaginationQueryDto,
   ): Promise<LeaderboardEntryDto[]> {
-    return this.gamificationService.getLeaderboard({ page, limit });
+    return this.gamificationService.getLeaderboard(page, limit);
   }
 
   /**
