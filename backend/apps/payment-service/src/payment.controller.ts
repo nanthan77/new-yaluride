@@ -27,9 +27,9 @@ import { IsNotEmpty, IsString, IsNumber, Min, IsOptional, IsEmail, IsPhoneNumber
 import { Type, plainToInstance } from 'class-transformer';
 
 import { PaymentService, PaymentIntentResponse } from './payment.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
+import { User } from '@yaluride/database';
 
 
 // --- Data Transfer Objects (DTOs) for Controller ---
@@ -126,8 +126,8 @@ export class PaymentController {
     
     // Construct user details required by PayHere
     const userDetails = {
-        firstName: user.name.split(' ')[0] || 'YALURIDE',
-        lastName: user.name.split(' ').slice(1).join(' ') || 'User',
+        firstName: user.fullName.split(' ')[0] || 'YALURIDE',
+        lastName: user.fullName.split(' ').slice(1).join(' ') || 'User',
         email: user.email || 'support@yaluride.com', // Use a fallback email
         phone: user.phoneNumber,
     };

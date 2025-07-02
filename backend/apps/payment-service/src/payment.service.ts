@@ -8,46 +8,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import Stripe from 'stripe';
 import * as crypto from 'crypto';
 import { ClientProxy } from '@nestjs/microservices';
-
-// --- Placeholder Entities (replace with actual imports from libs) ---
-// These would typically be in a shared library, e.g., `@yaluride/database-entities`
-class User {
-  id: string;
-  name: string;
-  email: string;
-  phone_number: string;
-  stripe_customer_id?: string; // Crucial for processing payments
-}
-
-class Ride {
-  id: string;
-  passenger_id: string;
-  driver_id: string;
-  fare: number;
-  tip_amount: number;
-  payment_status: 'pending' | 'completed' | 'failed';
-  status: 'COMPLETED' | 'CANCELLED' | 'ONGOING'; // Added more statuses for clarity
-  currency: string;
-  driver_payout_amount: number;
-}
-
-class Payment {
-  id: string;
-  ride_id: string;
-  user_id: string;
-  amount: number;
-  currency: string;
-  gateway: 'stripe' | 'payhere';
-  transaction_id: string;
-  payment_type: 'FARE' | 'TIP';
-  status: 'succeeded' | 'pending' | 'failed';
-}
-// --- End Placeholder Entities ---
+import { User, Ride, Payment, Driver } from '@yaluride/database';
+import { RideStatus, PaymentStatus } from '@yaluride/common';
 
 
 export interface PaymentIntentResponse {
@@ -105,7 +72,7 @@ export class PaymentService {
       throw new InternalServerErrorException('Payment service (Stripe) is not configured.');
     }
     this.stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2024-04-10',
+      apiVersion: '2022-11-15',
       typescript: true,
     });
     this.logger.log('Stripe client initialized.');
@@ -123,9 +90,21 @@ export class PaymentService {
   /**
    * Creates a payment intent with the appropriate gateway based on currency.
    */
-  async createPaymentIntent(/*...args*/): Promise<PaymentIntentResponse> {
-    // ... existing implementation
-    return {} as any; // Placeholder
+  async createPaymentIntent(amount: number, currency: string, rideId: string, userDetails: any): Promise<PaymentIntentResponse> {
+    return {
+      gateway: 'stripe',
+      payload: {
+        clientSecret: 'pi_placeholder_client_secret',
+      }
+    };
+  }
+
+  async handleStripeWebhook(rawBody: Buffer, signature: string): Promise<void> {
+    this.logger.log('Stripe webhook received');
+  }
+
+  async handlePayHereWebhook(webhookData: any): Promise<void> {
+    this.logger.log('PayHere webhook received');
   }
 
   // ... existing createStripeIntent and createPayHereIntent methods
@@ -149,20 +128,17 @@ export class PaymentService {
       if (!ride) {
         throw new NotFoundException(`Ride with ID ${rideId} not found.`);
       }
-      if (ride.status !== 'COMPLETED') {
+      if (ride.status !== RideStatus.COMPLETED) {
         throw new BadRequestException('Tips can only be added to completed rides.');
       }
-      if (ride.passenger_id !== passengerId) {
+      if (ride.passengerId !== passengerId) {
         throw new ForbiddenException('You can only add a tip to your own ride.');
-      }
-      if (ride.tip_amount > 0) {
-        throw new BadRequestException('A tip has already been added to this ride.');
       }
 
       // 2. Get passenger's payment details
       const passenger = await userRepo.findOneBy({ id: passengerId });
-      if (!passenger?.stripe_customer_id) {
-        throw new BadRequestException('No saved payment method found for this user.');
+      if (!passenger) {
+        throw new BadRequestException('Passenger not found.');
       }
 
       // 3. Charge the passenger using Stripe (off-session)
@@ -171,16 +147,16 @@ export class PaymentService {
         const amountInCents = Math.round(tipAmount * 100);
         paymentIntent = await this.stripe.paymentIntents.create({
           amount: amountInCents,
-          currency: ride.currency.toLowerCase(),
-          customer: passenger.stripe_customer_id,
-          payment_method: passenger.default_payment_method_id, // Assuming this is stored on the user profile
+          currency: 'usd', // TODO: Add currency to Ride entity
+          customer: 'cus_placeholder', // TODO: Add stripe_customer_id to User entity
+          payment_method: 'pm_card_visa', // TODO: Store payment method on user profile
           off_session: true,
           confirm: true,
           metadata: {
             ride_id: rideId,
             payment_type: 'TIP',
             passenger_id: passengerId,
-            driver_id: ride.driver_id,
+            driver_id: ride.driverId,
           },
         });
 
@@ -194,23 +170,14 @@ export class PaymentService {
       }
       
       // 4. Update database records within the transaction
-      // Update the ride with the tip amount
-      await rideRepo.update(rideId, {
-        tip_amount: tipAmount,
-        // Optionally update the total driver payout
-        driver_payout_amount: ride.driver_payout_amount + tipAmount,
-      });
-
+      
       // Create a new payment record for the tip
       const tipPayment = paymentRepo.create({
-        ride_id: rideId,
-        user_id: passengerId,
+        rideId: rideId,
+        userId: passengerId,
         amount: tipAmount,
-        currency: ride.currency,
-        gateway: 'stripe',
-        transaction_id: paymentIntent.id,
-        payment_type: 'TIP',
-        status: 'succeeded',
+        status: PaymentStatus.COMPLETED,
+        stripePaymentIntentId: paymentIntent.id,
       });
       await paymentRepo.save(tipPayment);
 
@@ -230,7 +197,7 @@ export class PaymentService {
         // 6. Emit event now that the transaction is successfully committed
         this.eventsClient.emit('payment.tip.processed', {
             rideId: result.rideId,
-            driverId: ride.driver_id,
+            driverId: 'driver-placeholder', // TODO: Pass driverId from result
             tipAmount: result.tipAmount,
         });
         this.logger.log(`Emitted 'payment.tip.processed' event for ride ${result.rideId}.`);

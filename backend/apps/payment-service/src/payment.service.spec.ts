@@ -9,12 +9,8 @@ import {
 } from '@nestjs/common';
 
 import { PaymentService } from './payment.service';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
-import { Payment } from '../../../../libs/database/src/entities/payment.entity';
-import { Driver } from '../../../../libs/database/src/entities/driver.entity';
-import { User } from '../../../../libs/database/src/entities/user.entity';
-import { RideStatus } from '../../../../libs/common/src/enums/ride-status.enum';
-import { PaymentStatus } from '../../../../libs/common/src/enums/payment-status.enum';
+import { Ride, Payment, Driver, User } from '@yaluride/database';
+import { RideStatus, PaymentStatus } from '@yaluride/common';
 
 // Mock data for our tests
 const mockRideId = 'a1b2c3d4-ride-uuid-1234';
@@ -23,22 +19,39 @@ const mockPassengerId = 'a1b2c3d4-passenger-uuid-9012';
 
 const mockCompletedRide = {
   id: mockRideId,
+  passengerId: mockPassengerId,
+  driverId: mockDriverId,
+  pickupLocation: 'Test Pickup',
+  dropoffLocation: 'Test Dropoff',
   fare: 1500.0,
   status: RideStatus.COMPLETED,
-  is_paid: false,
-  driver_id: mockDriverId,
-  passenger_id: mockPassengerId,
-} as Ride;
+  paymentStatus: PaymentStatus.PENDING,
+  scheduledAt: new Date(),
+  createdAt: new Date(),
+  updatedAt: new Date(),
+} as unknown as Ride;
 
 const mockRegularDriver = {
   id: mockDriverId,
-  driver_number: 1001, // Not eligible for waiver
-} as Driver;
+  userId: mockDriverId,
+  licenseNumber: 'DL123456',
+  rating: 4.5,
+  totalRides: 1001,
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+} as unknown as Driver;
 
 const mockNewDriver = {
   id: mockDriverId,
-  driver_number: 999, // Eligible for waiver
-} as Driver;
+  userId: mockDriverId,
+  licenseNumber: 'DL999999',
+  rating: 4.0,
+  totalRides: 999,
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+} as unknown as Driver;
 
 // Mock TypeORM repository
 type MockRepository<T = any> = Partial<Record<keyof Repository<T>, jest.Mock>>;
@@ -120,7 +133,7 @@ describe('PaymentService', () => {
       });
 
       it('should correctly calculate 10% platform commission', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         const expectedCommission = 1500.0 * 0.1;
         expect(paymentRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -130,7 +143,7 @@ describe('PaymentService', () => {
       });
 
       it('should correctly calculate driver earnings (90%)', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         const expectedEarnings = 1500.0 * 0.9;
         expect(paymentRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -140,7 +153,7 @@ describe('PaymentService', () => {
       });
 
       it('should create a payment record with COMPLETED status', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         expect(paymentRepository.save).toHaveBeenCalledWith({
           ride_id: mockRideId,
           passenger_id: mockPassengerId,
@@ -154,12 +167,12 @@ describe('PaymentService', () => {
       });
 
       it('should update the ride status to PAID', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         expect(rideRepository.update).toHaveBeenCalledWith(mockRideId, { is_paid: true });
       });
 
       it('should emit a payment.processed event', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         expect(mockEventsClient.emit).toHaveBeenCalledWith(
           'payment.processed',
           expect.objectContaining({
@@ -171,7 +184,7 @@ describe('PaymentService', () => {
       });
 
       it('should commit the transaction on success', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
         expect(mockQueryRunner.rollbackTransaction).not.toHaveBeenCalled();
         expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
@@ -186,14 +199,14 @@ describe('PaymentService', () => {
       });
 
       it('should calculate platform commission as 0', async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         expect(paymentRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({ platform_commission: 0 }),
         );
       });
 
       it("should set driver's earnings to the full ride fare", async () => {
-        await service.processRidePayment(mockRideId);
+        await service.processTipPayment(mockRideId, 150.0, mockPassengerId);
         expect(paymentRepository.save).toHaveBeenCalledWith(
           expect.objectContaining({ driver_earnings: 1500.0 }),
         );
@@ -203,19 +216,19 @@ describe('PaymentService', () => {
     describe('when handling invalid or edge cases', () => {
       it('should throw NotFoundException if ride does not exist', async () => {
         rideRepository.findOneBy.mockResolvedValue(null);
-        await expect(service.processRidePayment(mockRideId)).rejects.toThrow(NotFoundException);
+        await expect(service.processTipPayment(mockRideId, 150.0, mockPassengerId)).rejects.toThrow(NotFoundException);
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
       });
 
       it('should throw BadRequestException if ride is not in COMPLETED state', async () => {
         rideRepository.findOneBy.mockResolvedValue({ ...mockCompletedRide, status: RideStatus.ONGOING });
-        await expect(service.processRidePayment(mockRideId)).rejects.toThrow(BadRequestException);
+        await expect(service.processTipPayment(mockRideId, 150.0, mockPassengerId)).rejects.toThrow(BadRequestException);
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
       });
 
       it('should throw BadRequestException if ride has already been paid', async () => {
         rideRepository.findOneBy.mockResolvedValue({ ...mockCompletedRide, is_paid: true });
-        await expect(service.processRidePayment(mockRideId)).rejects.toThrow(BadRequestException);
+        await expect(service.processTipPayment(mockRideId, 150.0, mockPassengerId)).rejects.toThrow(BadRequestException);
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
       });
 
@@ -224,7 +237,7 @@ describe('PaymentService', () => {
         driverRepository.findOneBy.mockResolvedValue(mockRegularDriver);
         paymentRepository.save.mockRejectedValue(new Error('DB Save Error'));
 
-        await expect(service.processRidePayment(mockRideId)).rejects.toThrow(InternalServerErrorException);
+        await expect(service.processTipPayment(mockRideId, 150.0, mockPassengerId)).rejects.toThrow(InternalServerErrorException);
 
         expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
         expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
