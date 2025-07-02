@@ -15,7 +15,7 @@ RUN npm ci
 COPY . .
 
 # Build the specific service
-RUN npm run build matching-service
+RUN npx nest build matching-service
 
 # Production stage
 FROM node:18-alpine AS production

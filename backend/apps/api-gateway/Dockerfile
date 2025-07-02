@@ -15,7 +15,7 @@ RUN npm ci
 COPY . .
 
 # Build the specific service
-RUN npm run build api-gateway
+RUN npx nest build api-gateway
 
 # Production stage
 FROM node:18-alpine AS production

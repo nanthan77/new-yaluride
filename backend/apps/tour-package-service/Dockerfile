@@ -15,7 +15,7 @@ RUN npm ci
 COPY . .
 
 # Build the specific service
-RUN npm run build tour-package-service
+RUN npx nest build tour-package-service
 
 # Production stage
 FROM node:18-alpine AS production

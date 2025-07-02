@@ -15,7 +15,7 @@ RUN npm ci
 COPY . .
 
 # Build the specific service
-RUN npm run build user-service
+RUN npx nest build user-service
 
 # Production stage
 FROM node:18-alpine AS production
