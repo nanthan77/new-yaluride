@@ -1,0 +1,377 @@
+# .gitlab-ci.yml
+# This file defines the CI/CD pipeline for the YALURIDE project.
+# It automates the process of building, testing, containerizing, and deploying
+# the frontend, backend microservices, and database migrations.
+
+# --- Global Variables & Default Settings ---
+# Variables defined here are available to all jobs.
+# For secrets, use GitLab CI/CD settings: Settings > CI/CD > Variables
+variables:
+  # Use the GitLab Container Registry
+  CI_REGISTRY_IMAGE_PREFIX: "$CI_REGISTRY_IMAGE/yaluride"
+  # Set Node.js version for consistency
+  NODE_VERSION: "18-alpine"
+  # Set Docker-in-Docker (dind) settings
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+
+# Define the stages of the pipeline. Jobs in earlier stages run before later ones.
+stages:
+  - build
+  - test
+  - dockerize
+  - deploy_staging
+  - deploy_production
+
+# --- Job Templates ---
+# Templates are used to reduce code duplication. They are not actual jobs.
+
+# Template for Node.js based jobs (build, test)
+.node_template:
+  image: node:$NODE_VERSION
+  before_script:
+    - echo "Using Node.js version $(node -v)"
+    - npm install --global pnpm # Or yarn, npm
+    - pnpm install --frozen-lockfile
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store
+
+# Template for Docker build jobs
+.docker_build_template:
+  stage: dockerize
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - echo "Logging in to GitLab Container Registry..."
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      if [ -z "$SERVICE_NAME" ] || [ -z "$DOCKERFILE_PATH" ]; then
+        echo "SERVICE_NAME and DOCKERFILE_PATH variables must be set."
+        exit 1
+      fi
+      IMAGE_TAG="$CI_REGISTRY_IMAGE_PREFIX/$SERVICE_NAME:$CI_COMMIT_SHA"
+      echo "Building Docker image for $SERVICE_NAME..."
+      echo "Image tag: $IMAGE_TAG"
+      docker build -t $IMAGE_TAG -f $DOCKERFILE_PATH .
+      echo "Pushing image to registry..."
+      docker push $IMAGE_TAG
+      echo "Image pushed successfully."
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+
+# Template for Supabase deployment jobs
+.supabase_deploy_template:
+  image: supabase/cli
+  before_script:
+    - echo "Supabase CLI Version: $(supabase --version)"
+    - |
+      if [ "$CI_COMMIT_BRANCH" == "main" ]; then
+        echo "Using PRODUCTION Supabase project."
+        SUPABASE_PROJECT_ID=$SUPABASE_PROJECT_ID_PRODUCTION
+      elif [ "$CI_COMMIT_BRANCH" == "develop" ]; then
+        echo "Using STAGING Supabase project."
+        SUPABASE_PROJECT_ID=$SUPABASE_PROJECT_ID_STAGING
+      else
+        echo "Deployment is only allowed from 'main' or 'develop' branches."
+        exit 1
+      fi
+      if [ -z "$SUPABASE_PROJECT_ID" ]; then
+        echo "SUPABASE_PROJECT_ID for the environment is not set."
+        exit 1
+      fi
+      supabase link --project-ref $SUPABASE_PROJECT_ID
+
+# --- Build Stage ---
+
+build-frontend:
+  stage: build
+  extends: .node_template
+  script:
+    - cd frontend
+    - pnpm build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 hour
+
+build-backend:
+  stage: build
+  extends: .node_template
+  script:
+    - cd backend
+    - pnpm build # Assumes a root build script in the backend monorepo
+  artifacts:
+    paths:
+      - backend/apps/*/dist/
+      - backend/libs/*/dist/
+    expire_in: 1 hour
+
+# --- Test Stage ---
+
+test-frontend:
+  stage: test
+  extends: .node_template
+  dependencies:
+    - build-frontend
+  script:
+    - cd frontend
+    - pnpm test -- --coverage # Run unit tests with coverage
+
+test-backend:
+  stage: test
+  extends: .node_template
+  dependencies:
+    - build-backend
+  services:
+    - postgres:15-alpine
+    - redis:7-alpine
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: test_user
+    POSTGRES_PASSWORD: test_password
+  script:
+    - cd backend
+    - pnpm test # Run backend unit & integration tests
+
+test-e2e:
+  stage: test
+  image: cypress/base:18.16.1 # Use an image with Cypress and browser dependencies
+  dependencies:
+    - build-frontend
+  script:
+    - cd frontend
+    - npm install # Cypress might need its own dependencies installed
+    - npx cypress run --browser chrome # Run E2E tests
+
+# --- Dockerize Stage ---
+
+dockerize-frontend:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "frontend"
+    DOCKERFILE_PATH: "./frontend/Dockerfile"
+  dependencies:
+    - build-frontend
+
+dockerize-api-gateway:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "api-gateway"
+    DOCKERFILE_PATH: "./backend/apps/api-gateway/Dockerfile"
+  dependencies:
+    - build-backend
+
+# ... Create a 'dockerize' job for each microservice ...
+dockerize-user-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "user-service"
+    DOCKERFILE_PATH: "./backend/apps/user-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-gamification-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "gamification-service"
+    DOCKERFILE_PATH: "./backend/apps/gamification-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-promotions-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "promotions-service"
+    DOCKERFILE_PATH: "./backend/apps/promotions-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+# --------------------------------------------------------------------
+# Additional Microservice Docker Builds
+# --------------------------------------------------------------------
+
+dockerize-driver-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "driver-service"
+    DOCKERFILE_PATH: "./backend/apps/driver-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-ride-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "ride-service"
+    DOCKERFILE_PATH: "./backend/apps/ride-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-payment-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "payment-service"
+    DOCKERFILE_PATH: "./backend/apps/payment-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-location-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "location-service"
+    DOCKERFILE_PATH: "./backend/apps/location-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-voice-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "voice-service"
+    DOCKERFILE_PATH: "./backend/apps/voice-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-admin-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "admin-service"
+    DOCKERFILE_PATH: "./backend/apps/admin-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-analytics-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "analytics-service"
+    DOCKERFILE_PATH: "./backend/apps/analytics-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-matching-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "matching-service"
+    DOCKERFILE_PATH: "./backend/apps/matching-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-bidding-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "bidding-service"
+    DOCKERFILE_PATH: "./backend/apps/bidding-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-notification-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "notification-service"
+    DOCKERFILE_PATH: "./backend/apps/notification-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-route-template-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "route-template-service"
+    DOCKERFILE_PATH: "./backend/apps/route-template-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-tour-package-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "tour-package-service"
+    DOCKERFILE_PATH: "./backend/apps/tour-package-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+dockerize-communication-service:
+  extends: .docker_build_template
+  variables:
+    SERVICE_NAME: "communication-service"
+    DOCKERFILE_PATH: "./backend/apps/communication-service/Dockerfile"
+  dependencies:
+    - build-backend
+
+# --- Deploy to Staging ---
+
+deploy-db-staging:
+  stage: deploy_staging
+  extends: .supabase_deploy_template
+  script:
+    - echo "Deploying database migrations to STAGING..."
+    - supabase db push
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+deploy-functions-staging:
+  stage: deploy_staging
+  extends: .supabase_deploy_template
+  script:
+    - echo "Deploying Edge Functions to STAGING..."
+    - supabase functions deploy --project-ref $SUPABASE_PROJECT_ID_STAGING
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+deploy-k8s-staging:
+  stage: deploy_staging
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - echo "Deploying services to STAGING Kubernetes cluster..."
+    - echo "$STAGING_KUBECONFIG" > kubeconfig.yaml
+    - export KUBECONFIG=kubeconfig.yaml
+    - kubectl config get-contexts
+    - kubectl config use-context <your-staging-context-name>
+    - kubectl apply -k k8s/overlays/staging # Using Kustomize for environment-specific configs
+    - kubectl rollout status deployment/api-gateway-staging -n yaluride-staging
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+# --- Deploy to Production ---
+
+deploy-db-production:
+  stage: deploy_production
+  extends: .supabase_deploy_template
+  script:
+    - echo "Deploying database migrations to PRODUCTION..."
+    - supabase db push
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual # Requires manual trigger from GitLab UI
+
+deploy-functions-production:
+  stage: deploy_production
+  extends: .supabase_deploy_template
+  script:
+    - echo "Deploying Edge Functions to PRODUCTION..."
+    - supabase functions deploy --project-ref $SUPABASE_PROJECT_ID_PRODUCTION
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+
+deploy-k8s-production:
+  stage: deploy_production
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - echo "Deploying services to PRODUCTION Kubernetes cluster..."
+    - echo "$PRODUCTION_KUBECONFIG" > kubeconfig.yaml
+    - export KUBECONFIG=kubeconfig.yaml
+    - kubectl config get-contexts
+    - kubectl config use-context <your-production-context-name>
+    - kubectl apply -k k8s/overlays/production
+    - kubectl rollout status deployment/api-gateway-production -n yaluride-production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
