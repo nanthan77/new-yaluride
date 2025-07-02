@@ -3,8 +3,10 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy root package files (contains NestJS CLI)
 COPY package*.json ./
+COPY nest-cli.json ./
+COPY tsconfig.json ./
 
 # Install all dependencies (including devDependencies for build)
 RUN npm ci
@@ -12,8 +14,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the specific service
+RUN npm run build payment-service
 
 # Production stage
 FROM node:18-alpine AS production

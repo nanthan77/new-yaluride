@@ -46,7 +46,6 @@ jobs:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
           publish_dir: ./frontend/dist
           force_orphan: true
-          cname: yaluride-staging.pages.dev
 
   validate-database:
     runs-on: ubuntu-latest
