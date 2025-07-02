@@ -79,7 +79,7 @@ export class CommunicationController {
 
     // Ensure the requested userType matches the user's role for security.
     // A user should not be able to request canned responses for a role they do not have.
-    if (user.role !== UserRole.ADMIN && user.role !== 'both' && user.role !== userType) {
+    if (user.role !== UserRole.ADMIN && user.role !== userType) {
         throw new ForbiddenException(`You do not have permission to view canned responses for the role: ${userType}`);
     }
 
