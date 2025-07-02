@@ -103,7 +103,7 @@ export class PaymentService {
       throw new InternalServerErrorException('Payment service (Stripe) is not configured.');
     }
     this.stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2022-11-15',
+      apiVersion: null,
       typescript: true,
     });
     this.logger.log('Stripe client initialized.');
