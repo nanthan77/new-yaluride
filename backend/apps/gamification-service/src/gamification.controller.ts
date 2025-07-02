@@ -14,12 +14,12 @@ import {
   ApiResponse,
   ApiQuery,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // adjust import path as needed
-import { User as UserDecorator } from '../common/decorators/user.decorator'; // adjust path
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
 import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { UserBadgeDto } from './dto/user-badge.dto';
 import { BadgeDto } from './dto/badge.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '@yaluride/common';
 
 @ApiTags('Gamification')
 @Controller('gamification')

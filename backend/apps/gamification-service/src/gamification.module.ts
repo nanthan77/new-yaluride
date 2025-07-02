@@ -7,11 +7,7 @@ import { GamificationController } from './gamification.controller';
 import { GamificationService } from './gamification.service';
 
 // Import Entities from the shared database library
-import { Badge } from '../../../../libs/database/src/entities/badge.entity';
-import { UserBadge } from '../../../../libs/database/src/entities/user-badge.entity';
-import { PointsLog } from '../../../../libs/database/src/entities/points-log.entity';
-import { Profile } from '../../../../libs/database/src/entities/profile.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
+import { Badge, UserBadge, PointsLog, Profile, Ride } from '@yaluride/database';
 
 @Module({
   imports: [

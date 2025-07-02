@@ -9,11 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { GamificationEvent, GamificationEventType } from './interfaces/gamification-event.interface';
-import { Badge } from '../../../../libs/database/src/entities/badge.entity';
-import { UserBadge } from '../../../../libs/database/src/entities/user-badge.entity';
-import { PointsLog, PointReason } from '../../../../libs/database/src/entities/points-log.entity';
-import { Profile } from '../../../../libs/database/src/entities/profile.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
+import { Badge, UserBadge, PointsLog, Profile, Ride } from '@yaluride/database';
 import { LeaderboardEntryDto, UserBadgeDto, BadgeDto } from './dto/gamification.dto';
 
 // Define badge criteria in a structured way
