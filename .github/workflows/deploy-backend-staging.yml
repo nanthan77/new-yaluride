@@ -23,23 +23,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: 'backend/package-lock.json'
 
       - name: Install dependencies
-        run: |
-          cd backend
-          npm ci
+        working-directory: backend
+        run: npm ci
 
       - name: Build backend
-        run: |
-          cd backend
-          npm run build
+        working-directory: backend
+        run: npm run build
 
       - name: Run tests
-        run: |
-          cd backend
-          npm test -- --passWithNoTests
+        working-directory: backend
+        run: npm test -- --passWithNoTests
 
   build-docker-images:
     needs: build-and-test
