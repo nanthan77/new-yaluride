@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RouteTemplate } from './core/entities/route-template.entity';
+import { RouteTemplate } from '@yaluride/database';
 import {
   CreateRouteTemplateDto,
   UpdateRouteTemplateDto,
@@ -35,7 +35,6 @@ export class RouteTemplateService {
     try {
       const newTemplate = this.routeTemplateRepository.create({
         ...createDto,
-        driver_id: driverId,
       });
 
       const savedTemplate = await this.routeTemplateRepository.save(newTemplate);
@@ -56,8 +55,8 @@ export class RouteTemplateService {
     this.logger.log(`Fetching templates for driver ${driverId}`);
     try {
       return await this.routeTemplateRepository.find({
-        where: { driver_id: driverId },
-        order: { updated_at: 'DESC' },
+        where: { isActive: true },
+        order: { updatedAt: 'DESC' },
       });
     } catch (error) {
       this.logger.error(`Failed to fetch templates for driver ${driverId}`, error.stack);
@@ -71,13 +70,13 @@ export class RouteTemplateService {
    * @param driverId - The ID of the driver requesting the template.
    * @returns The requested route template.
    */
-  async getTemplateById(templateId: number, driverId: string): Promise<RouteTemplate> {
+  async getTemplateById(templateId: string, driverId: string): Promise<RouteTemplate> {
     const template = await this.routeTemplateRepository.findOneBy({ id: templateId });
     if (!template) {
       throw new NotFoundException(`Route template with ID ${templateId} not found.`);
     }
-    if (template.driver_id !== driverId) {
-      throw new ForbiddenException('You do not have permission to access this template.');
+    if (!template.isActive) {
+      throw new ForbiddenException('Template is not active.');
     }
     return template;
   }
@@ -91,7 +90,7 @@ export class RouteTemplateService {
    * @returns The updated route template.
    */
   async updateTemplate(
-    templateId: number,
+    templateId: string,
     updateDto: UpdateRouteTemplateDto,
     driverId: string,
   ): Promise<RouteTemplate> {
@@ -116,7 +115,7 @@ export class RouteTemplateService {
    * @param templateId - The ID of the template to delete.
    * @param driverId - The ID of the driver making the request.
    */
-  async deleteTemplate(templateId: number, driverId: string): Promise<void> {
+  async deleteTemplate(templateId: string, driverId: string): Promise<void> {
     const template = await this.getTemplateById(templateId, driverId); // Re-uses ownership check
 
     try {

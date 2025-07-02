@@ -11,12 +11,8 @@ import { Repository, In, Like } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 
 // Assuming entities and enums are in a shared library
-import { User } from '../../../../libs/database/src/entities/user.entity';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
-import { Company } from '../../../../libs/database/src/entities/company.entity';
-import { CompanyEmployee } from '../../../../libs/database/src/entities/company-employee.entity';
-import { TravelPolicy } from '../../../../libs/database/src/entities/travel-policy.entity';
-import { UserRole, ModerationStatus } from '../../../../libs/common/src/enums/user.enums';
+import { User, Ride, Company, CompanyEmployee, TravelPolicy } from '@yaluride/database';
+import { UserRole, ModerationStatus, VerificationType } from '@yaluride/common';
 import { ApproveVerificationDto, RejectVerificationDto } from './dto/admin.dto';
 
 // Simple pagination response DTO
@@ -25,6 +21,21 @@ export interface PaginatedResult<T> {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface PlatformStats {
+  totalUsers: number;
+  activeRides: number;
+  totalRevenue: number;
+  pendingVerifications: number;
+}
+
+interface FindUserParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  status?: string;
 }
 
 @Injectable()
@@ -58,7 +69,7 @@ export class AdminService {
         where: {
           role: In([UserRole.DRIVER, UserRole.BOTH]),
           // Find users where at least one of the verification statuses is 'pending'
-          gn_verified_status: ModerationStatus.PENDING,
+          moderationStatus: ModerationStatus.PENDING,
           // The OR condition below is commented out as it's not supported directly in TypeORM's find options in this manner.
           // A QueryBuilder would be needed for a complex OR across multiple columns.
           // For simplicity, we'll start by fetching pending GN verifications.
@@ -75,16 +86,12 @@ export class AdminService {
         },
         select: [ // Select only necessary fields for the admin dashboard view
           'id',
-          'display_name',
-          'phone_number',
-          'gn_division_id',
-          'gn_verified_status',
-          'driver_license_verified_status',
-          'vehicle_verified_status',
-          'gn_verification_documents',
-          'driver_license_documents',
-          'vehicle_verification_documents',
-          'created_at',
+          'fullName',
+          'phoneNumber',
+          'role',
+          'isVerified',
+          'moderationStatus',
+          'createdAt',
         ],
       });
       return pendingUsers;
@@ -113,13 +120,13 @@ export class AdminService {
 
     switch (verificationType) {
       case 'gn':
-        statusField = 'gn_verified_status';
+        statusField = 'moderationStatus';
         break;
       case 'license':
-        statusField = 'driver_license_verified_status';
+        statusField = 'moderationStatus';
         break;
       case 'vehicle':
-        statusField = 'vehicle_verified_status';
+        statusField = 'moderationStatus';
         break;
       default:
         throw new BadRequestException('Invalid verification type specified.');
@@ -177,13 +184,13 @@ export class AdminService {
 
     switch (verificationType) {
       case 'gn':
-        statusField = 'gn_verified_status';
+        statusField = 'moderationStatus';
         break;
       case 'license':
-        statusField = 'driver_license_verified_status';
+        statusField = 'moderationStatus';
         break;
       case 'vehicle':
-        statusField = 'vehicle_verified_status';
+        statusField = 'moderationStatus';
         break;
       default:
         throw new BadRequestException('Invalid verification type specified.');
@@ -244,7 +251,7 @@ export class AdminService {
         where,
         take: limit,
         skip: (page - 1) * limit,
-        order: { created_at: 'DESC' },
+        order: { createdAt: 'DESC' },
       });
 
       return { data, total, page, limit };
@@ -348,16 +355,6 @@ export class AdminService {
    * DASHBOARD / ADMIN SUMMARY
    * ---------------------------------------------------------------------*/
 
-  export interface PlatformStats {
-    totalUsers: number;
-    activeRides: number;
-    totalRevenue: number;
-    pendingVerifications: number;
-  }
-
-  /**
-   * Returns aggregated numbers for the admin dashboard
-   */
   async getPlatformStats(): Promise<PlatformStats> {
     try {
       const [totalUsers, activeRides, { revenue }, pendingVerifs] = await Promise.all([
@@ -370,11 +367,7 @@ export class AdminService {
           .where('ride.status = :status', { status: 'COMPLETED' })
           .getRawOne<{ revenue: string }>(),
         this.userRepository.count({
-          where: [
-            { gn_verified_status: ModerationStatus.PENDING },
-            { driver_license_verified_status: ModerationStatus.PENDING },
-            { vehicle_verified_status: ModerationStatus.PENDING },
-          ],
+          where: { moderationStatus: ModerationStatus.PENDING },
         }),
       ]);
 
@@ -394,26 +387,18 @@ export class AdminService {
    * USER MANAGEMENT
    * ---------------------------------------------------------------------*/
 
-  interface FindUserParams {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    status?: string;
-  }
-
   async findUsers(params: FindUserParams) {
     const { page = 1, limit = 20, search, role, status } = params;
     try {
       const qb = this.userRepository
         .createQueryBuilder('u')
-        .orderBy('u.created_at', 'DESC')
+        .orderBy('u.createdAt', 'DESC')
         .take(limit)
         .skip((page - 1) * limit);
 
       if (search) {
         qb.andWhere(
-          '(LOWER(u.display_name) ILIKE :search OR LOWER(u.email) ILIKE :search OR u.phone_number ILIKE :search)',
+          '(LOWER(u.fullName) ILIKE :search OR LOWER(u.email) ILIKE :search OR u.phoneNumber ILIKE :search)',
           { search: `%${search.toLowerCase()}%` },
         );
       }
@@ -435,10 +420,10 @@ export class AdminService {
   async updateUserStatus(userId: string, newStatus: string): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
-    if (user.status === newStatus)
+    if (user.moderationStatus === newStatus)
       throw new BadRequestException('User already has this status');
 
-    await this.userRepository.update(userId, { status: newStatus } as any);
+    await this.userRepository.update(userId, { moderationStatus: newStatus } as any);
     this.eventsClient.emit('admin.user.status.updated', {
       userId,
       newStatus,

@@ -26,9 +26,8 @@ import {
 
 import { ConfigService } from '@nestjs/config';
 import { RideService } from './ride.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator, User, RideStatus, RideLegStatus } from '@yaluride/common';
 import {
   CreateRideRequestDto,
   UpdateRideStatusDto,
@@ -65,7 +64,7 @@ export class RideController {
   ): Promise<RideResponseDto> {
     this.logger.log(`Received ride request from passenger: ${passenger.id}`);
     const ride = await this.rideService.createRideRequest(createRideDto, passenger);
-    return new RideResponseDto(ride);
+    return new RideResponseDto(ride as any);
   }
 
   @Get(':id')
@@ -79,7 +78,7 @@ export class RideController {
     @UserDecorator() user: User,
   ): Promise<RideResponseDto> {
     const ride = await this.rideService.findRideByIdForUser(rideId, user.id);
-    return new RideResponseDto(ride);
+    return new RideResponseDto(ride as any);
   }
 
   @Patch(':id/status')
@@ -95,37 +94,37 @@ export class RideController {
     @Body() updateRideStatusDto: UpdateRideStatusDto,
   ): Promise<RideResponseDto> {
     const { status, ...payload } = updateRideStatusDto;
-    let updatedRide: Ride;
+    let updatedRide: any;
 
     // The service layer will contain the complex logic to validate if a user
     // can perform a specific status change.
     switch (status) {
-      case 'CANCELLED_BY_PASSENGER':
-        if (user.id !== (await this.rideService.findRideById(rideId)).passenger_id) {
+      case RideStatus.CANCELLED_BY_PASSENGER:
+        if (user.id !== (await this.rideService.findRideById(rideId)).passengerId) {
           throw new ForbiddenException('Only the passenger can cancel the ride.');
         }
         updatedRide = await this.rideService.cancelTrip(rideId, user.id, payload.cancellationReason);
         break;
-      case 'CANCELLED_BY_DRIVER':
-         if (user.id !== (await this.rideService.findRideById(rideId)).driver_id) {
+      case RideStatus.CANCELLED_BY_DRIVER:
+         if (user.id !== (await this.rideService.findRideById(rideId)).driverId) {
           throw new ForbiddenException('Only the driver can cancel the ride.');
         }
         updatedRide = await this.rideService.cancelTrip(rideId, user.id, payload.cancellationReason);
         break;
-      case 'DRIVER_ARRIVED':
-         if (user.id !== (await this.rideService.findRideById(rideId)).driver_id) {
+      case RideStatus.DRIVER_ARRIVED:
+         if (user.id !== (await this.rideService.findRideById(rideId)).driverId) {
           throw new ForbiddenException('Only the driver can mark themselves as arrived.');
         }
         updatedRide = await this.rideService.driverArrived(rideId, user.id);
         break;
-      case 'ONGOING':
-        if (user.id !== (await this.rideService.findRideById(rideId)).driver_id) {
+      case RideStatus.ONGOING:
+        if (user.id !== (await this.rideService.findRideById(rideId)).driverId) {
           throw new ForbiddenException('Only the driver can start the trip.');
         }
         updatedRide = await this.rideService.startTrip(rideId, user.id);
         break;
-      case 'COMPLETED':
-         if (user.id !== (await this.rideService.findRideById(rideId)).driver_id) {
+      case RideStatus.COMPLETED:
+         if (user.id !== (await this.rideService.findRideById(rideId)).driverId) {
           throw new ForbiddenException('Only the driver can end the trip.');
         }
         if (!payload.finalFare || !payload.distanceMeters) {
@@ -187,11 +186,15 @@ export class RideController {
   ): Promise<{ message: string }> {
     // Ensure the requesting user is the driver of this ride
     const ride = await this.rideService.findRideById(dto.rideId);
-    if (!ride || ride.driver_id !== user.id) {
+    if (!ride || ride.driverId !== user.id) {
       throw new ForbiddenException('Only the assigned driver can update passenger leg status for this ride.');
     }
 
-    await this.rideService.updatePassengerLegStatus(dto);
+    await this.rideService.updatePassengerLegStatus({
+      rideId: dto.rideId,
+      passengerId: dto.passengerId,
+      status: dto.status as any
+    });
     return { message: 'Passenger leg status updated.' };
   }
 
@@ -232,6 +235,6 @@ export class RideController {
       'https://app.gamango.lk/share';
     const shareUrl = `${baseUrl}/${token}`;
 
-    return { token, shareUrl };
+    return { token: token.token, shareUrl };
   }
 }

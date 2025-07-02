@@ -9,12 +9,8 @@ import {
 } from '@nestjs/common';
 
 import { PaymentService } from './payment.service';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
-import { Payment } from '../../../../libs/database/src/entities/payment.entity';
-import { Driver } from '../../../../libs/database/src/entities/driver.entity';
-import { User } from '../../../../libs/database/src/entities/user.entity';
-import { RideStatus } from '../../../../libs/common/src/enums/ride-status.enum';
-import { PaymentStatus } from '../../../../libs/common/src/enums/payment-status.enum';
+import { Ride, Payment, Driver, User } from '@yaluride/database';
+import { RideStatus, PaymentStatus } from '@yaluride/common';
 
 // Mock data for our tests
 const mockRideId = 'a1b2c3d4-ride-uuid-1234';
@@ -23,21 +19,42 @@ const mockPassengerId = 'a1b2c3d4-passenger-uuid-9012';
 
 const mockCompletedRide = {
   id: mockRideId,
+  passengerId: mockPassengerId,
+  driverId: mockDriverId,
+  pickupLocation: 'Test Pickup',
+  dropoffLocation: 'Test Dropoff',
+  distance: 10,
+  duration: 20,
   fare: 1500.0,
   status: RideStatus.COMPLETED,
-  is_paid: false,
-  driver_id: mockDriverId,
-  passenger_id: mockPassengerId,
+  paymentStatus: 'pending',
+  scheduledAt: new Date(),
+  passenger: null,
+  driver: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
 } as Ride;
 
 const mockRegularDriver = {
   id: mockDriverId,
-  driver_number: 1001, // Not eligible for waiver
+  userId: mockDriverId,
+  licenseNumber: 'DL123456',
+  rating: 4.5,
+  totalRides: 1001,
+  status: 'online',
+  createdAt: new Date(),
+  updatedAt: new Date(),
 } as Driver;
 
 const mockNewDriver = {
   id: mockDriverId,
-  driver_number: 999, // Eligible for waiver
+  userId: mockDriverId,
+  licenseNumber: 'DL999999',
+  rating: 4.0,
+  totalRides: 999,
+  status: 'online',
+  createdAt: new Date(),
+  updatedAt: new Date(),
 } as Driver;
 
 // Mock TypeORM repository

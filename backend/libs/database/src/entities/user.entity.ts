@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { UserRole, ModerationStatus } from '../../../common/src/enums/user.enums';
+import { UserRole, ModerationStatus } from '@yaluride/common';
 
 @Entity('users')
 export class User {
@@ -37,4 +37,10 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  latitude: number;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  longitude: number;
 }

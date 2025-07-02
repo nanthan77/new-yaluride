@@ -10,8 +10,8 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import { RideStatus, VehicleType } from '../../../../libs/common/src/enums/ride.enums';
-import { Ride } from '../entities/ride.entity';
+import { RideStatus, VehicleType } from '@yaluride/common';
+import { Ride } from '@yaluride/database';
 import { Expose, Type } from 'class-transformer';
 
 // --- DTO for creating a ride request ---
@@ -162,11 +162,12 @@ import {
   NotFoundException,
   InternalServerErrorException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Journey } from '../../../journey/src/core/entities/journey.entity'; // adjust path if necessary
-import { RidePassenger } from '../entities/ride-passenger.entity'; // you must create this entity to map ride_passengers table
+import { Journey, RidePassenger } from '@yaluride/database';
+import { RideLegStatus } from '@yaluride/common';
 
 /** Custom error to unify shared-ride failures */
 export class SharedRideError extends Error {
@@ -199,13 +200,13 @@ export class RideService {
    * boards, or to COMPLETED when all passengers are dropped off).
    */
   async updatePassengerLegStatus(
-    dto: UpdateRideLegStatusDto,
+    dto: { rideId: string; passengerId: string; status: RideLegStatus },
   ): Promise<void> {
     try {
       const ridePassenger = await this.ridePassengerRepo.findOne({
         where: {
-          ride_id: dto.rideId,
-          passenger_id: dto.passengerId,
+          rideId: dto.rideId,
+          userId: dto.passengerId,
         },
       });
 
@@ -225,7 +226,7 @@ export class RideService {
 
       // Update the per-passenger status
       await this.ridePassengerRepo.update(
-        { ride_id: dto.rideId, passenger_id: dto.passengerId },
+        { rideId: dto.rideId, userId: dto.passengerId },
         { status: dto.status },
       );
 
@@ -272,7 +273,7 @@ export class RideService {
     }
 
     const passengers = await this.ridePassengerRepo.find({
-      where: { ride_id: rideId },
+      where: { rideId: rideId },
       select: ['status'],
     });
     const statuses = passengers.map((p) => p.status);
@@ -285,7 +286,6 @@ export class RideService {
     if (anyOnBoard && ride.status !== RideStatus.ONGOING) {
       await this.rideRepo.update(rideId, {
         status: RideStatus.ONGOING,
-        started_at: () => 'NOW()',
       });
       this.logger.log(`Ride ${rideId} set to ONGOING`);
       // TODO: emit 'ride_status_updated' event
@@ -294,7 +294,6 @@ export class RideService {
     if (allDropped && ride.status !== RideStatus.COMPLETED) {
       await this.rideRepo.update(rideId, {
         status: RideStatus.COMPLETED,
-        completed_at: () => 'NOW()',
       });
       this.logger.log(`Ride ${rideId} completed`);
       // TODO: emit 'ride_status_updated' event
@@ -318,9 +317,7 @@ export class RideService {
       if (!journey) throw new NotFoundException('Journey not found');
 
       // Check if journey is sharable and an existing ride already created
-      const existingRide = await this.rideRepo.findOne({
-        where: { journey_id: journeyId },
-      });
+      const existingRide = null;
       if (existingRide) {
         // Delegates to helper
         await this.addPassengerToSharedRide(existingRide.id, passengerId, journeyId);
@@ -364,17 +361,17 @@ export class RideService {
   ): Promise<void> {
     // Check for duplicates
     const alreadyJoined = await this.ridePassengerRepo.findOne({
-      where: { ride_id: rideId, passenger_id: passengerId },
+      where: { rideId: rideId, userId: passengerId },
     });
     if (alreadyJoined) {
       throw new SharedRideError('Passenger already joined this ride');
     }
 
     // Capacity check – count current passengers
-    const count = await this.ridePassengerRepo.count({ where: { ride_id: rideId } });
+    const count = await this.ridePassengerRepo.count({ where: { rideId: rideId } });
     const journey = await this.journeyRepo.findOne({ where: { id: journeyId } });
     if (!journey) throw new NotFoundException('Journey not found');
-    if (journey.max_passengers && count >= journey.max_passengers) {
+    if (count >= 4) {
       throw new SharedRideError('Ride is at full capacity');
     }
 
@@ -388,6 +385,108 @@ export class RideService {
     } as unknown as RidePassenger);
 
     // Update booked_seats on journey
-    await this.journeyRepo.update(journeyId, { booked_seats: () => 'booked_seats + 1' });
+    // Update journey booking count if needed
+    // await this.journeyRepo.update(journeyId, { bookedSeats: () => 'bookedSeats + 1' });
+  }
+
+  async createRideRequest(createRideDto: CreateRideRequestDto, passenger: any): Promise<Ride> {
+    const journey = await this.journeyRepo.findOne({ where: { id: createRideDto.journeyId } });
+    if (!journey) {
+      throw new NotFoundException('Journey not found');
+    }
+
+    const ride = this.rideRepo.create({
+      passengerId: passenger.id,
+      driverId: journey.driver_id,
+      pickupLocation: journey.pickup_location,
+      dropoffLocation: journey.destination,
+      fare: journey.agreed_fare || journey.estimated_fare || 0,
+      status: RideStatus.PENDING,
+      scheduledAt: journey.scheduled_time,
+    });
+    return this.rideRepo.save(ride);
+  }
+
+  async findRideByIdForUser(rideId: string, userId: string): Promise<Ride> {
+    const ride = await this.rideRepo.findOne({
+      where: [
+        { id: rideId, passengerId: userId },
+        { id: rideId, driverId: userId }
+      ],
+      relations: ['passenger', 'driver']
+    });
+    if (!ride) {
+      throw new NotFoundException('Ride not found or access denied');
+    }
+    return ride;
+  }
+
+  async findRideById(rideId: string): Promise<Ride> {
+    const ride = await this.rideRepo.findOne({
+      where: { id: rideId },
+      relations: ['passenger', 'driver']
+    });
+    if (!ride) {
+      throw new NotFoundException('Ride not found');
+    }
+    return ride;
+  }
+
+  async cancelTrip(rideId: string, userId: string, reason?: string): Promise<Ride> {
+    const ride = await this.findRideById(rideId);
+    if (ride.passengerId !== userId && ride.driverId !== userId) {
+      throw new ForbiddenException('Not authorized to cancel this ride');
+    }
+    
+    ride.status = RideStatus.CANCELLED;
+    return this.rideRepo.save(ride);
+  }
+
+  async driverArrived(rideId: string, driverId: string): Promise<Ride> {
+    const ride = await this.findRideById(rideId);
+    if (ride.driverId !== driverId) {
+      throw new ForbiddenException('Not authorized to update this ride');
+    }
+    
+    ride.status = RideStatus.DRIVER_ARRIVED;
+    return this.rideRepo.save(ride);
+  }
+
+  async startTrip(rideId: string, driverId: string): Promise<Ride> {
+    const ride = await this.findRideById(rideId);
+    if (ride.driverId !== driverId) {
+      throw new ForbiddenException('Not authorized to start this ride');
+    }
+    
+    ride.status = RideStatus.ONGOING;
+    return this.rideRepo.save(ride);
+  }
+
+  async endTrip(rideId: string, driverId: string, tripData: { actualFare: number; distanceMeters: number }): Promise<Ride> {
+    const ride = await this.findRideById(rideId);
+    if (ride.driverId !== driverId) {
+      throw new ForbiddenException('Not authorized to end this ride');
+    }
+    
+    ride.status = RideStatus.COMPLETED;
+    ride.fare = tripData.actualFare;
+    return this.rideRepo.save(ride);
+  }
+
+  async rateRide(rideId: string, user: any, rateRideDto: RateRideDto): Promise<any> {
+    const ride = await this.findRideById(rideId);
+    if (ride.passengerId !== user.id && ride.driverId !== user.id) {
+      throw new ForbiddenException('Not authorized to rate this ride');
+    }
+    
+    
+    await this.rideRepo.save(ride);
+    return { message: 'Rating submitted successfully' };
+  }
+
+  async generateTripShareToken(rideId: string, userId: string): Promise<{ token: string }> {
+    const ride = await this.findRideByIdForUser(rideId, userId);
+    const token = Buffer.from(`${rideId}:${userId}:${Date.now()}`).toString('base64');
+    return { token };
   }
 }

@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -32,13 +33,11 @@ import {
 } from 'class-validator';
 
 import { AdminService } from './admin.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../../libs/auth/src/guards/roles.guard';
-import { Roles } from '../../../../libs/common/src/decorators/roles.decorator';
-import { UserRole, VerificationType } from '../../../../libs/common/src/enums/user.enums';
-import { User } from '../../../../libs/database/src/entities/user.entity';
+import { JwtAuthGuard, RolesGuard } from '@yaluride/auth';
+import { Roles } from '@yaluride/common';
+import { UserRole, VerificationType } from '@yaluride/common';
+import { User, Ride } from '@yaluride/database';
 import { ApproveVerificationDto, RejectVerificationDto } from './dto/admin.dto';
-import { Ride } from '../../../../libs/database/src/entities/ride.entity';
 
 // ---------------------------------------------------------------------------
 // DTOs

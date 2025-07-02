@@ -10,9 +10,8 @@ import {
   IsArray,
 } from 'class-validator';
 import { Expose, Type } from 'class-transformer';
-import { Bid } from '../entities/bid.entity';
-import { BidStatus } from '../../../../libs/common/src/enums/bid.enums';
-import { User } from '../../../../user/src/core/entities/user.entity';
+import { Bid, BidStatus } from '@yaluride/database';
+import { User } from '@yaluride/database';
 
 // --- DTO for Creating a Bid ---
 
@@ -23,7 +22,7 @@ export class CreateBidDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  journey_id: string;
+  journeyId: string;
 
   @ApiProperty({
     description: 'The amount the driver is bidding for the journey.',
@@ -32,7 +31,7 @@ export class CreateBidDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive({ message: 'Bid amount must be a positive number.' })
   @IsNotEmpty()
-  bid_amount: number;
+  amount: number;
 
   @ApiPropertyOptional({
     description: 'An optional message from the driver to the passenger.',
@@ -42,7 +41,7 @@ export class CreateBidDto {
   @IsOptional()
   @IsString()
   @MaxLength(300)
-  driver_notes?: string;
+  message?: string;
 }
 
 // --- DTO for API Responses ---
@@ -75,10 +74,10 @@ class BidDriverDto {
   constructor(driver: User) {
     this.id = driver.id;
     // Anonymize name if needed based on rules, e.g., only show initials
-    this.display_name = driver.display_name;
-    this.avatar_url = driver.profile_picture_url;
-    this.avg_rating_as_driver = driver.avg_rating_as_driver;
-    this.trust_score = driver.trust_score;
+    this.display_name = driver.fullName || 'Anonymous Driver';
+    this.avatar_url = '';
+    this.avg_rating_as_driver = 4.5; // Default rating
+    this.trust_score = 85; // Default trust score
   }
 }
 

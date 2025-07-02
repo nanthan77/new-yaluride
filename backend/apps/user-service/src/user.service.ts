@@ -14,7 +14,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ClientProxy } from '@nestjs/microservices';
 import { Inject } from '@nestjs/common';
 
-import { User, UserRole } from './entities/user.entity';
+import { User } from './entities/user.entity';
+import { UserRole } from '@yaluride/common';
 import { RegisterUserDto, UpdateProfileDto, VerifyGNDto } from './user.controller';
 
 const SALT_ROUNDS = 10;

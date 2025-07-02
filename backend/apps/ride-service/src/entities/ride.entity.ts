@@ -9,11 +9,8 @@ import {
   OneToOne,
 } from 'typeorm';
 import { RideStatus, PaymentStatus } from '../../../../libs/common/src/enums/ride.enums';
-import { User } from '../../user/entities/user.entity'; // Placeholder path
-import { Driver } from '../../driver/entities/driver.entity'; // Placeholder path
-import { Vehicle } from '../../driver/entities/vehicle.entity'; // Placeholder path
-import { Journey } from '../../marketplace/entities/journey.entity'; // Placeholder path
-import { Bid } from '../../marketplace/entities/bid.entity'; // Placeholder path
+import { User, Driver, Journey } from '@yaluride/database';
+import { Bid } from '@yaluride/database';
 
 // Interface for PostGIS Point object
 interface Point {
@@ -50,9 +47,8 @@ export class Ride {
   @Column({ type: 'uuid', nullable: true })
   vehicle_id: string;
 
-  @ManyToOne(() => Vehicle)
-  @JoinColumn({ name: 'vehicle_id' })
-  vehicle: Vehicle;
+  @Column({ type: 'varchar', nullable: true })
+  vehicleType: string;
 
   @Column({ type: 'uuid', unique: true })
   accepted_bid_id: string;
@@ -103,11 +99,11 @@ export class Ride {
   })
   payment_status: PaymentStatus;
 
-  @Column({ type: 'int', nullable: true, check: 'passenger_rating BETWEEN 1 AND 5' })
-  passenger_rating: number;
+  @Column({ type: 'int', nullable: true })
+  passengerRating: number;
 
-  @Column({ type: 'int', nullable: true, check: 'driver_rating BETWEEN 1 AND 5' })
-  driver_rating: number;
+  @Column({ type: 'int', nullable: true })
+  driverRating: number;
 
   @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;

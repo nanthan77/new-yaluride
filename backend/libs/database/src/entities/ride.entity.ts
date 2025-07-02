@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { RideStatus, PaymentStatus } from '../../../common/src/enums/ride.enums';
+import { RideStatus, PaymentStatus } from '@yaluride/common';
 import { User } from './user.entity';
 
 @Entity('rides')
@@ -25,7 +25,7 @@ export class Ride {
   @Column({
     type: 'enum',
     enum: RideStatus,
-    default: RideStatus.SCHEDULED,
+    default: RideStatus.PENDING,
   })
   status: RideStatus;
 

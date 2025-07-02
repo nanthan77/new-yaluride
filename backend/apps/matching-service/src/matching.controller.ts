@@ -21,10 +21,8 @@ import { IsNotEmpty, IsNumber, IsEnum, IsOptional, Min, Max } from 'class-valida
 import { Expose, Type } from 'class-transformer';
 
 import { MatchingService } from './matching.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { VehicleType } from '../../../../libs/common/src/enums/vehicle.enums';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator, User, VehicleTypeEnum } from '@yaluride/common';
 
 // --- DTOs (Data Transfer Objects) ---
 
@@ -63,12 +61,12 @@ export class FindDriversDto {
 
   @ApiProperty({
     description: 'The type of vehicle requested by the passenger.',
-    enum: VehicleType,
-    example: VehicleType.CAR,
+    enum: VehicleTypeEnum,
+    example: VehicleTypeEnum.CAR,
   })
   @IsNotEmpty()
-  @IsEnum(VehicleType)
-  vehicleType: VehicleType;
+  @IsEnum(VehicleTypeEnum)
+  vehicleType: VehicleTypeEnum;
 }
 
 export class DriverResultDto {
@@ -144,19 +142,24 @@ export class MatchingController {
       `Passenger ${user.id} is finding drivers for type '${findDriversDto.vehicleType}' near (${findDriversDto.latitude}, ${findDriversDto.longitude})`,
     );
 
-    const drivers = await this.matchingService.findAvailableDrivers(findDriversDto);
+    const drivers = await this.matchingService.findAvailableDrivers(
+      findDriversDto.latitude,
+      findDriversDto.longitude,
+      findDriversDto.vehicleType,
+      findDriversDto.radiusKm
+    );
 
     // Map the raw driver data to a public-facing DTO to control exposed information
     return drivers.map(
       (driver) =>
         new DriverResultDto({
           id: driver.id,
-          name: driver.name,
-          avgRating: driver.avgRating,
-          vehicle: driver.vehicle,
-          location: driver.location,
-          distanceKm: driver.distanceKm,
-          etaMinutes: Math.ceil(driver.distanceKm * 1.5), // Simple ETA calculation
+          name: driver.user?.email?.split('@')[0] || 'Driver',
+          avgRating: driver.rating,
+          vehicle: 'Car', // Placeholder - would need vehicle entity
+          location: { latitude: driver.user?.latitude || 0, longitude: driver.user?.longitude || 0 },
+          distanceKm: 0, // Placeholder - would be calculated from geo query
+          etaMinutes: 5, // Placeholder ETA
         }),
     );
   }

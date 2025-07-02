@@ -20,15 +20,14 @@ import {
 } from '@nestjs/swagger';
 
 import { CommunicationService } from './communication.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator, User } from '@yaluride/common';
 import {
   GetCannedResponsesQueryDto,
   MessageDto,
   CannedResponseDto,
 } from './core/dto/communication.dto';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
+import { UserRole } from '@yaluride/common';
 
 
 @ApiTags('Communication & Chat')
@@ -58,7 +57,7 @@ export class CommunicationController {
     this.logger.log(`User ${user.id} requesting chat history for ride ${rideId}`);
     // The service layer will throw a ForbiddenException if the user is not part of the ride.
     const messages = await this.communicationService.getChatHistory(rideId, user.id);
-    return messages.map(msg => new MessageDto(msg));
+    return messages.map(msg => new MessageDto());
   }
 
   @Get('canned-responses')

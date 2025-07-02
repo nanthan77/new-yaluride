@@ -20,12 +20,8 @@ import {
 } from '@nestjs/swagger';
 
 import { PromotionsService } from './promotions.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../../libs/auth/src/guards/roles.guard';
-import { Roles } from '../../../../libs/common/src/decorators/roles.decorator';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
+import { JwtAuthGuard, RolesGuard } from '@yaluride/auth';
+import { Roles, UserDecorator, User, UserRole } from '@yaluride/common';
 import {
     CreateVoucherDto,
     ApplyVoucherDto,

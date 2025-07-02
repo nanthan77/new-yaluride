@@ -13,11 +13,14 @@ export class Message {
   @Column()
   senderId: string;
 
+  @Column()
+  recipientId: string;
+
   @Column('text')
   content: string;
 
-  @Column({ default: false })
-  isRead: boolean;
+  @Column({ default: 'sent' })
+  status: string;
 
   @CreateDateColumn()
   createdAt: Date;

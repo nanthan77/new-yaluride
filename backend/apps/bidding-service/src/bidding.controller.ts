@@ -23,10 +23,9 @@ import {
 } from '@nestjs/swagger';
 
 import { BiddingService } from './bidding.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator, User, UserRole } from '@yaluride/common';
+import { NotFoundException } from '@nestjs/common';
 import { CreateBidDto, BidResponseDto, BidSuggestionResponseDto } from './core/dto/bid.dto';
 import { RideResponseDto } from '../../ride-service/src/dto/ride.dto'; // Assuming shared DTO location
 
@@ -55,13 +54,13 @@ export class BiddingController {
     @Body() createBidDto: CreateBidDto,
     @UserDecorator() driver: User,
   ): Promise<BidResponseDto> {
-    this.logger.log(`Driver ${driver.id} is placing a bid on journey ${createBidDto.journey_id}`);
+    this.logger.log(`Driver ${driver.id} is placing a bid on journey ${createBidDto.journeyId}`);
 
     if (driver.role !== UserRole.DRIVER && driver.role !== UserRole.BOTH) {
       throw new ForbiddenException('Only users with a driver role can place bids.');
     }
 
-    const bid = await this.biddingService.createBid(createBidDto, driver);
+    const bid = await this.biddingService.createBid(createBidDto, driver.id);
     return new BidResponseDto(bid);
   }
 
@@ -79,7 +78,7 @@ export class BiddingController {
     @UserDecorator() user: User,
   ): Promise<BidResponseDto[]> {
     this.logger.log(`User ${user.id} is fetching bids for journey ${journeyId}`);
-    const bids = await this.biddingService.getBidsForJourney(journeyId, user);
+    const bids = await this.biddingService.getBidsForJourney(journeyId, user.id);
     return bids.map(bid => new BidResponseDto(bid));
   }
 
@@ -104,11 +103,18 @@ export class BiddingController {
         throw new ForbiddenException('Only users with a passenger role can accept bids.');
     }
 
-    const ride = await this.biddingService.acceptBid(bidId, passenger);
-    // The ride object is created in the ride-service via an event,
-    // but we can return the confirmed bid details or initial ride details here.
-    // For simplicity, we assume the service returns a ride-like object.
-    return new RideResponseDto(ride);
+    const journey = await this.biddingService.acceptBid(bidId, passenger.id);
+    const rideData = {
+      id: journey.id,
+      passengerId: journey.passenger_id,
+      driverId: journey.driver_id,
+      status: 'confirmed' as any, // Convert JourneyStatus to RideStatus
+      pickupLocation: journey.pickup_location,
+      dropoffLocation: journey.destination_latitude + ',' + journey.destination_longitude,
+      fare: journey.agreed_fare,
+      scheduledAt: journey.scheduled_time,
+    };
+    return new RideResponseDto(rideData);
   }
 
   @Get('journeys/:journeyId/suggestion')

@@ -4,10 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { RideController } from './ride.controller';
 import { RideService } from './ride.service';
-import { Ride } from './entities/ride.entity';
-import { Journey } from './entities/journey.entity'; // Ride service will likely need to update Journey status
-import { Bid } from './entities/bid.entity'; // Ride service will likely need to read accepted Bid details
-import { DatabaseModule } from '../../../../libs/database/src/database.module'; // Assuming a shared database module
+import { Ride } from '@yaluride/database';
+import { DatabaseModule } from '@yaluride/database';
 
 // Define service names for injection, consistent with the API Gateway
 export const SERVICE_NAMES = {
@@ -30,39 +28,23 @@ export const SERVICE_NAMES = {
     // Connects to the database via the shared DatabaseModule and registers
     // the specific entities this service will manage.
     DatabaseModule,
-    TypeOrmModule.forFeature([Ride, Journey, Bid]),
+    TypeOrmModule.forFeature([Ride]),
 
-    // --- Microservice Clients Module ---
-    // Registers the clients for other microservices that RideService needs to communicate with.
     ClientsModule.registerAsync([
       {
-        name: 'RIDE_SERVICE_CLIENTS', // A name for the factory provider
+        name: 'RIDE_EVENTS_SERVICE',
         imports: [ConfigModule],
-        inject: [ConfigService],
-        useFactory: (configService: ConfigService) => {
-          const rmqUrl = configService.get<string>('RABBITMQ_URL');
-          if (!rmqUrl) {
-            throw new Error('RABBITMQ_URL is not defined in the environment variables.');
-          }
-          
-          // Dynamically create client configurations
-          const clients = Object.values(SERVICE_NAMES).map(serviceName => ({
-            name: serviceName,
-            transport: Transport.RMQ,
-            options: {
-              urls: [rmqUrl],
-              queue: `${serviceName.replace('_SERVICE', '').toLowerCase()}_queue`,
-              queueOptions: {
-                durable: true,
-              },
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.get<string>('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
+            queue: 'yaluride_ride_events_queue',
+            queueOptions: {
+              durable: true,
             },
-          }));
-          
-          return {
-            clients,
-            isGlobal: true, // Make clients available globally within this module's context
-          };
-        },
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],

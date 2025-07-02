@@ -4,6 +4,7 @@ export enum UserRole {
   ADMIN = 'admin',
   CORPORATE_ADMIN = 'corporate_admin',
   CORPORATE_EMPLOYEE = 'corporate_employee',
+  BOTH = 'both',
 }
 
 export enum ModerationStatus {
@@ -13,7 +14,7 @@ export enum ModerationStatus {
 }
 
 export enum VerificationType {
-  IDENTITY = 'identity',
-  DRIVER_LICENSE = 'driver_license',
-  VEHICLE_REGISTRATION = 'vehicle_registration',
+  GN = 'gn',
+  LICENSE = 'license', 
+  VEHICLE = 'vehicle',
 }

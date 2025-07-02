@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Driver } from '../../../driver/src/core/entities/driver.entity'; // Adjust path based on monorepo structure
-import { VehicleType } from '../../../../libs/common/src/enums/vehicle.enums'; // Adjust path
+import { Driver } from '@yaluride/database';
+import { VehicleTypeEnum } from '@yaluride/common';
 
 // --- Interfaces & Types ---
 
@@ -42,7 +42,7 @@ export class GeoService {
   async findAvailableDriversInRadius(
     center: Coordinates,
     radiusKm: number,
-    vehicleType?: VehicleType,
+    vehicleType?: VehicleTypeEnum,
   ): Promise<(Driver & { distance_meters: number })[]> {
     const radiusMeters = radiusKm * 1000;
     const originPoint = `ST_SetSRID(ST_MakePoint(${center.longitude}, ${center.latitude}), 4326)::geography`;

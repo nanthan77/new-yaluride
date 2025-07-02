@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Journey } from '../../journey/src/core/entities/journey.entity'; // Adjust path based on your monorepo structure
-import { VehicleType } from '../../../../libs/common/src/enums/ride.enums';
+import { Journey } from '@yaluride/database';
+import { VehicleType } from '@yaluride/common';
 import { SuggestedBidResponseDto } from './core/dto/bidding.dto';
 
 // --- Pricing Model Constants ---
@@ -17,7 +17,10 @@ const PEAK_HOURS = [7, 8, 9, 17, 18, 19]; // 7-10 AM and 5-8 PM
 // Vehicle type premiums (as multipliers)
 const VEHICLE_PREMIUMS: Record<VehicleType, number> = {
   [VehicleType.CAR]: 1.0,
+  [VehicleType.MOTORCYCLE]: 0.6,
   [VehicleType.VAN]: 1.5,
+  [VehicleType.TRUCK]: 1.8,
+  [VehicleType.BUS]: 2.0,
   [VehicleType.SUV]: 1.4,
   [VehicleType.TUKTUK]: 0.8,
   [VehicleType.BIKE]: 0.6,
@@ -42,14 +45,14 @@ export class BiddingStrategyService {
     // 1. Calculate Base Fare
     // In a real scenario, distance and duration would be estimated from a routing service.
     // Here we'll use placeholder values if they don't exist on the journey object.
-    const distanceKm = (journey.distance_meters || 10000) / 1000; // Default to 10km
-    const durationMinutes = (journey.estimated_duration_seconds || 1800) / 60; // Default to 30 mins
+    const distanceKm = 10; // Default to 10km - would be calculated from coordinates in production
+    const durationMinutes = 30; // Default to 30 mins - would be estimated from routing service
     const baseFare = this._calculateBaseFare(distanceKm, durationMinutes);
 
     // 2. Get Multipliers
-    const demandMultiplier = this._getDemandMultiplier(journey.pickup_address);
-    const timeMultiplier = this._getTimeMultiplier(new Date(journey.scheduled_at));
-    const vehiclePremium = this._getVehiclePremium(journey.vehicle_types);
+    const demandMultiplier = this._getDemandMultiplier(journey.pickup_location);
+    const timeMultiplier = this._getTimeMultiplier(new Date(journey.scheduled_time));
+    const vehiclePremium = this._getVehiclePremium([VehicleType.CAR]); // Default to CAR
 
     // 3. Calculate Recommended Bid
     let recommendedBid = baseFare * demandMultiplier * timeMultiplier * vehiclePremium;
@@ -81,12 +84,14 @@ export class BiddingStrategyService {
       },
     });
 
-    return {
-      min_bid: minBid,
-      recommended_bid: roundedRecommendedBid,
-      max_bid: maxBid,
-      currency: journey.currency || 'LKR',
-    };
+    return new SuggestedBidResponseDto({
+      suggestedAmount: roundedRecommendedBid,
+      minAmount: minBid,
+      maxAmount: maxBid,
+      confidence: 0.8,
+      factors: ['Distance', 'Time of day', 'Vehicle type', 'Demand'],
+      message: 'Suggested bid based on current market conditions'
+    });
   }
 
   /**

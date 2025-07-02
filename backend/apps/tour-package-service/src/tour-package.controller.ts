@@ -26,12 +26,8 @@ import {
 } from '@nestjs/swagger';
 
 import { TourPackageService } from './tour-package.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../../libs/auth/src/guards/roles.guard';
-import { Roles } from '../../../../libs/common/src/decorators/roles.decorator';
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator';
-import { User } from '../../../../libs/common/src/types/user.type';
-import { UserRole } from '../../../../libs/common/src/enums/user.enums';
+import { JwtAuthGuard, RolesGuard } from '@yaluride/auth';
+import { Roles, UserDecorator, User, UserRole } from '@yaluride/common';
 import {
     CreateTourPackageDto,
     UpdateTourPackageDto,
@@ -58,7 +54,7 @@ export class TourPackageController {
     async findActivePackages(): Promise<TourPackageDto[]> {
         this.logger.log('Fetching all active tour packages for public view.');
         const packages = await this.tourPackageService.findActivePackages();
-        return packages.map(pkg => new TourPackageDto(pkg));
+        return packages.map(pkg => Object.assign(new TourPackageDto(), pkg));
     }
 
     @Get('/:packageId')
@@ -69,7 +65,7 @@ export class TourPackageController {
     async findPackageById(@Param('packageId', ParseUUIDPipe) packageId: string): Promise<TourPackageDto> {
         this.logger.log(`Fetching details for tour package ${packageId}`);
         const tourPackage = await this.tourPackageService.findPackageById(packageId);
-        return new TourPackageDto(tourPackage);
+        return Object.assign(new TourPackageDto(), tourPackage);
     }
 
     // --- Driver-Specific Endpoints ---
@@ -87,7 +83,7 @@ export class TourPackageController {
     ): Promise<TourPackageDto> {
         this.logger.log(`Driver ${user.id} creating new tour package: "${createDto.title}"`);
         const newPackage = await this.tourPackageService.createPackage(user.id, createDto);
-        return new TourPackageDto(newPackage);
+        return Object.assign(new TourPackageDto(), newPackage);
     }
 
     @Put('/:packageId')
@@ -104,7 +100,7 @@ export class TourPackageController {
     ): Promise<TourPackageDto> {
         this.logger.log(`Driver ${user.id} updating tour package ${packageId}`);
         const updatedPackage = await this.tourPackageService.updatePackage(user.id, packageId, updateDto);
-        return new TourPackageDto(updatedPackage);
+        return Object.assign(new TourPackageDto(), updatedPackage);
     }
 
     @Delete('/:packageId')
@@ -138,7 +134,7 @@ export class TourPackageController {
     ): Promise<TourPackageDto> {
         this.logger.log(`Driver ${user.id} updating itinerary for tour package ${packageId}`);
         const updatedPackage = await this.tourPackageService.addOrUpdateItineraryItems(user.id, packageId, itemsDto);
-        return new TourPackageDto(updatedPackage);
+        return Object.assign(new TourPackageDto(), updatedPackage);
     }
 
     // --- Passenger-Specific Endpoints ---
@@ -157,7 +153,7 @@ export class TourPackageController {
     ): Promise<TourBookingDto> {
         this.logger.log(`Passenger ${user.id} booking tour package ${createBookingDto.tourPackageId}`);
         const booking = await this.tourPackageService.createBooking(user.id, createBookingDto);
-        return new TourBookingDto(booking);
+        return Object.assign(new TourBookingDto(), booking);
     }
 
     // --- Endpoints for Both Drivers & Passengers (Contextual) ---
@@ -177,7 +173,7 @@ export class TourPackageController {
     ): Promise<TourBookingDto> {
         this.logger.log(`Driver ${user.id} responding to booking ${bookingId} with status ${responseDto.status}`);
         const booking = await this.tourPackageService.respondToBooking(user.id, bookingId, responseDto);
-        return new TourBookingDto(booking);
+        return Object.assign(new TourBookingDto(), booking);
     }
 
     @Patch('/bookings/:bookingId/cancel')
@@ -192,6 +188,6 @@ export class TourPackageController {
     ): Promise<TourBookingDto> {
         this.logger.log(`User ${user.id} requested to cancel booking ${bookingId}`);
         const booking = await this.tourPackageService.cancelBooking(user.id, bookingId);
-        return new TourBookingDto(booking);
+        return Object.assign(new TourBookingDto(), booking);
     }
 }

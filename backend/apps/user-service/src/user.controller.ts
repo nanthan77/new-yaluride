@@ -25,6 +25,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiParam,
+  ApiProperty,
 } from '@nestjs/swagger';
 import {
   IsString,
@@ -37,11 +38,12 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Expose, Type } from 'class-transformer';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // Assuming path to jwt guard
-import { User as UserDecorator } from '../common/decorators/user.decorator'; // Custom decorator to get user from request
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { Throttle, SkipThrottle } from '@nestjs/throttler'; // For rate limiting
-import { User, UserRole } from './entities/user.entity'; // Assuming User entity
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { User } from './entities/user.entity';
+import { UserRole } from '@yaluride/common';
 
 // --- Data Transfer Objects (DTOs) ---
 
@@ -243,7 +245,7 @@ export class UserController {
   async register(@Body() registerUserDto: RegisterUserDto): Promise<UserResponseDto> {
     try {
       const user = await this.userService.register(registerUserDto);
-      this.userEventsClient.emit('user_registered', { userId: user.id, phoneNumber: user.phoneNumber, name: user.name, language: user.language });
+      this.userEventsClient.emit('user_registered', { userId: user.id, phoneNumber: user.phone_number, name: user.name, language: user.language });
       return new UserResponseDto(user);
     } catch (error) {
       if (error.message.includes('already exists')) { // More specific error handling from service

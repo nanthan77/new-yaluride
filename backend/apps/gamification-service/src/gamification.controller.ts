@@ -7,19 +7,19 @@ import {
 } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { GamificationService } from './gamification.service';
-import { GamificationEvent } from './interfaces/gamification-event.interface';
+// import { GamificationEvent } from './interfaces/gamification-event.interface';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiQuery,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // adjust import path as needed
-import { User as UserDecorator } from '../common/decorators/user.decorator'; // adjust path
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
 import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { UserBadgeDto } from './dto/user-badge.dto';
 import { BadgeDto } from './dto/badge.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '@yaluride/common';
 
 @ApiTags('Gamification')
 @Controller('gamification')
@@ -37,7 +37,7 @@ export class GamificationController {
    * @param event - The event payload containing the type and relevant data.
    */
   @EventPattern('gamification_event') // Listens to a single, unified topic for all gamification events
-  async handleGamificationEvent(@Payload() event: GamificationEvent) {
+  async handleGamificationEvent(@Payload() event: any) {
     this.logger.log(
       `Received gamification event: ${event.type} for user ${event.payload.userId}`,
     );
@@ -75,7 +75,7 @@ export class GamificationController {
   async getLeaderboard(
     @Query() { page, limit }: PaginationQueryDto,
   ): Promise<LeaderboardEntryDto[]> {
-    return this.gamificationService.getLeaderboard({ page, limit });
+    return this.gamificationService.getLeaderboard(page, limit);
   }
 
   /**

@@ -16,9 +16,9 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 
 import { AlertService } from './alert.service';
-import { JwtAuthGuard } from '../../../../libs/auth/src/guards/jwt-auth.guard'; // Adjust path
-import { User as UserDecorator } from '../../../../libs/common/src/decorators/user.decorator'; // Adjust path
-import { User } from '../../../../user/src/core/entities/user.entity'; // Adjust path
+import { JwtAuthGuard } from '@yaluride/auth';
+import { UserDecorator } from '@yaluride/common';
+import { User } from '@yaluride/database';
 import {
   CreateRoadAlertDto,
   VoteOnAlertDto,

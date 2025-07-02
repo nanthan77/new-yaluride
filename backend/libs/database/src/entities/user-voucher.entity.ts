@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { UserVoucherStatus } from '../../../common/src/enums/promotion.enums';
+import { UserVoucherStatus } from '@yaluride/common';
 import { User } from './user.entity';
 import { Voucher } from './voucher.entity';
 

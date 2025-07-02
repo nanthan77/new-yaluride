@@ -117,4 +117,47 @@ export class ApiGatewayService implements OnModuleInit {
     client.emit(eventPattern, payload);
     this.logger.log(`Event "${eventPattern}" emitted to ${serviceName}.`);
   }
+
+  /**
+   * Forward an HTTP request to a specific microservice.
+   * This method handles the request forwarding logic for the API gateway.
+   *
+   * @param serviceName - The name of the target microservice
+   * @param req - The HTTP request object
+   * @returns A Promise that resolves with the response from the microservice
+   */
+  async forwardRequest(serviceName: string, req: any): Promise<any> {
+    const client = this.clients.get(serviceName);
+
+    if (!client) {
+      this.logger.error(`Microservice client not found for service: ${serviceName}`);
+      throw new InternalServerErrorException(`Service ${serviceName} is not available.`);
+    }
+
+    try {
+      const requestData = {
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      };
+
+      const response = await firstValueFrom(
+        client.send('http.request', requestData)
+      );
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Error forwarding request to ${serviceName}:`,
+        error?.message || error,
+      );
+
+      throw new InternalServerErrorException(
+        `Failed to forward request to the ${serviceName.replace('_SERVICE', '').toLowerCase()} service.`,
+      );
+    }
+  }
 }

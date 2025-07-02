@@ -7,7 +7,7 @@ import {
   PrimaryColumn,
 } from 'typeorm';
 import { RoadAlert } from './road-alert.entity';
-import { User } from '../../../../user/src/core/entities/user.entity'; // Adjust path based on monorepo structure
+import { User } from '@yaluride/database';
 
 /**
  * Represents a single vote (upvote or downvote) cast by a user on a road alert.

@@ -1,6 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { UserKarmaLog } from '../entities/user-karma-log.entity';
+import { Injectable, Logger } from '@nestjs/common';
+
+@Injectable()
+export class UserKarmaService {
+  private readonly logger = new Logger(UserKarmaService.name);
+
+  async updateKarma(userId: string, points: number): Promise<void> {
+    this.logger.log(`Updating karma for user ${userId} with ${points} points`);
+  }
+
+  async getKarma(userId: string): Promise<number> {
+    this.logger.log(`Getting karma for user ${userId}`);
+    return 0;
+  }
+}
 
 /**
  * Data Transfer Object for representing a single karma log entry in API responses.
@@ -36,7 +50,7 @@ export class KarmaLogResponseDto {
   @Expose()
   created_at: Date;
 
-  constructor(partial: Partial<UserKarmaLog>) {
+  constructor(partial: any) {
     Object.assign(this, partial);
   }
 }

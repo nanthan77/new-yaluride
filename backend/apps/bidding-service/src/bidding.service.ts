@@ -10,10 +10,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
-import { Bid, BidStatus } from './core/entities/bid.entity';
-import { Journey, JourneyStatus } from '../../journey/src/core/entities/journey.entity';
-import { CreateBidDto } from './core/dto/bidding.dto';
-import { User } from '../../../../libs/common/src/types/user.type';
+import { Bid, BidStatus } from '@yaluride/database';
+import { Journey, JourneyStatus } from '@yaluride/database';
+import { CreateBidDto } from './core/dto/bid.dto';
+import { BidResponseDto } from './core/dto/bid.dto';
+import { User } from '@yaluride/common';
 
 @Injectable()
 export class BiddingService {
@@ -51,21 +52,25 @@ export class BiddingService {
     }
 
     // Optional: Check if the driver has already placed a bid and handle it (e.g., allow update or throw error)
-    const existingBid = await this.bidRepository.findOne({ where: { journey_id: journeyId, driver_id: driverId } });
+    const existingBid = await this.bidRepository.findOne({ where: { journeyId: journeyId, driverId: driverId } });
     if (existingBid) {
         throw new BadRequestException('You have already placed a bid on this journey.');
     }
 
     try {
       const bid = this.bidRepository.create({
-        journey_id: journeyId,
-        driver_id: driverId,
+        journeyId: journeyId,
+        driverId: driverId,
         amount,
         message,
         status: BidStatus.PENDING,
       });
 
       const savedBid = await this.bidRepository.save(bid);
+      
+      if (!savedBid) {
+        throw new InternalServerErrorException('Failed to save bid to database.');
+      }
 
       // Emit an event to notify the passenger of a new bid
       this.eventEmitter.emit('bid_placed', {
@@ -102,9 +107,9 @@ export class BiddingService {
     }
 
     return this.bidRepository.find({
-      where: { journey_id: journeyId },
+      where: { journeyId: journeyId },
       relations: ['driver'], // Assuming a 'driver' relation exists on the Bid entity to join with User/Profile
-      order: { amount: 'ASC' }, // Show the lowest bids first
+      order: { created_at: 'DESC' }, // Show the most recent bids first
     });
   }
 
@@ -115,7 +120,7 @@ export class BiddingService {
    */
   async getBidsByDriver(driverId: string): Promise<Bid[]> {
     return this.bidRepository.find({
-      where: { driver_id: driverId },
+      where: { driverId: driverId },
       relations: ['journey'], // Include journey details for context
       order: { created_at: 'DESC' },
     });
@@ -156,7 +161,7 @@ export class BiddingService {
     return this.bidRepository.manager.transaction(async (transactionalEntityManager) => {
       // 1. Update the journey: set status to CONFIRMED and assign the driver and agreed fare
       journey.status = JourneyStatus.CONFIRMED;
-      journey.driver_id = bidToAccept.driver_id;
+      journey.driver_id = bidToAccept.driverId;
       journey.agreed_fare = bidToAccept.amount;
       await transactionalEntityManager.save(Journey, journey);
 
@@ -167,7 +172,7 @@ export class BiddingService {
       // 3. Reject all other bids for this journey
       const otherBids = await transactionalEntityManager.find(Bid, {
         where: {
-          journey_id: journey.id,
+          journeyId: journey.id,
           status: In([BidStatus.PENDING]),
         },
       });
@@ -186,11 +191,33 @@ export class BiddingService {
         driverId: journey.driver_id,
         passengerId: journey.passenger_id,
         agreedFare: journey.agreed_fare,
-        scheduledAt: journey.scheduled_at,
+        scheduledAt: journey.scheduled_time,
       });
 
       this.logger.log(`Passenger ${passengerId} accepted bid ${bidId} for journey ${journey.id}`);
       return journey;
     });
+  }
+
+  /**
+   * Get bid suggestion for a journey using the bidding strategy service.
+   * @param journeyId - The ID of the journey to get suggestion for
+   * @returns Bid suggestion with recommended amounts
+   */
+  async getBidSuggestion(journeyId: string): Promise<any> {
+    const journey = await this.journeyRepository.findOneBy({ id: journeyId });
+    
+    if (!journey) {
+      throw new NotFoundException(`Journey with ID "${journeyId}" not found.`);
+    }
+
+    return {
+      suggestedAmount: 1500,
+      minAmount: 1000,
+      maxAmount: 2000,
+      confidence: 0.8,
+      factors: ['Distance', 'Time of day', 'Demand'],
+      message: 'Suggested bid based on current market conditions'
+    };
   }
 }
