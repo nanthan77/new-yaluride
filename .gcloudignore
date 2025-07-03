@@ -1,5 +1,12 @@
-# Ignore everything to force Dockerfile usage
+# Ignore everything to force Dockerfile usage and prevent buildpack detection
 *
 !backend/
 !cloudbuild.yaml
+!.gcloudignore
+
+# Explicitly exclude package.json files that trigger buildpack detection
+package.json
+package-lock.json
+frontend/package.json
+frontend/package-lock.json
 !Dockerfile

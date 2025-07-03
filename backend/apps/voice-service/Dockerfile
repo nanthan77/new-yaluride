@@ -1,4 +1,4 @@
-# Build stage - Force CI cache invalidation 2025-07-03 - VERIFIED LOCAL BUILD SUCCESS
+# Build stage - Force CI cache invalidation 2025-07-03 - FINAL FIX
 FROM node:18-alpine AS builder
 
 WORKDIR /app
