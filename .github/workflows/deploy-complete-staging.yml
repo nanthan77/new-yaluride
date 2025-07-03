@@ -40,13 +40,12 @@ jobs:
           retention-days: 7
 
       - name: Deploy to GitHub Pages (if secrets available)
-        if: ${{ env.PERSONAL_TOKEN != '' }}
-        env:
-          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
-        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ secrets.PERSONAL_TOKEN != '' }}
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          personal_token: ${{ env.PERSONAL_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/dist
+          destination_dir: staging
           force_orphan: true
 
   validate-database:
@@ -69,14 +68,11 @@ jobs:
           echo "Migration files are valid and ready for deployment"
 
       - name: Deploy database migrations (if secrets available)
-        if: ${{ env.SUPABASE_PROJECT_ID_STAGING != '' && env.SUPABASE_ACCESS_TOKEN != '' }}
-        env:
-          SUPABASE_PROJECT_ID_STAGING: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        if: ${{ secrets.SUPABASE_PROJECT_ID_STAGING != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
         run: |
           cd supabase
-          echo "Deploying to project: $SUPABASE_PROJECT_ID_STAGING"
-          supabase link --project-ref $SUPABASE_PROJECT_ID_STAGING
+          echo "Deploying to project: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}"
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
           supabase db push --linked
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -103,15 +99,14 @@ jobs:
           echo "Edge function files are valid and ready for deployment"
 
       - name: Deploy edge functions (if secrets available)
-        if: ${{ env.SUPABASE_PROJECT_ID_STAGING != '' && env.SUPABASE_ACCESS_TOKEN != '' }}
-        env:
-          SUPABASE_PROJECT_ID_STAGING: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        if: ${{ secrets.SUPABASE_PROJECT_ID_STAGING != '' && secrets.SUPABASE_ACCESS_TOKEN != '' }}
         run: |
           cd supabase
-          echo "Deploying edge functions to project: $SUPABASE_PROJECT_ID_STAGING"
-          supabase link --project-ref $SUPABASE_PROJECT_ID_STAGING
+          echo "Deploying edge functions to project: ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}"
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID_STAGING }}
           supabase functions deploy --linked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         continue-on-error: true
 
   build-and-test-backend:
@@ -234,9 +229,9 @@ jobs:
           retention-days: 30
 
       - name: Deploy to Kubernetes (if secrets available)
-        if: ${{ env.STAGING_KUBECONFIG != '' }}
-        env:
-          STAGING_KUBECONFIG: ${{ secrets.STAGING_KUBECONFIG }}
+        if: ${{ secrets.STAGING_KUBECONFIG != '' }}
         run: |
           echo "Kubernetes deployment would proceed here with proper secrets"
           echo "All infrastructure components are validated and ready"
+        env:
+          STAGING_KUBECONFIG: ${{ secrets.STAGING_KUBECONFIG }}
