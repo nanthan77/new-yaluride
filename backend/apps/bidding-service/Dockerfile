@@ -1,4 +1,4 @@
-# Build stage
+# Build stage - Force CI cache invalidation 2025-07-03
 FROM node:18-alpine AS builder
 
 WORKDIR /app
