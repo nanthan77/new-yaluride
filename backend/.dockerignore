@@ -17,3 +17,16 @@ Thumbs.db
 README.md
 .git
 .gitignore
+apps/*/node_modules
+apps/*/dist
+apps/*/.next
+apps/*/.cache
+apps/*/coverage
+apps/*/*.log
+apps/*/*.test
+apps/*/test*
+apps/*/node_modules
+apps/*/dist
+apps/*/.next
+apps/*/.cache
+apps/*/coverage
